@@ -55,31 +55,62 @@ jobs:
         run: |
           if [ -n "$PAQUETERIA_KEYSTORE_B64" ]; then
             printf '%s' "$PAQUETERIA_KEYSTORE_B64" | base64 --decode > android/app/paqueteria-release.jks
-            python3 - <<'PY'
-            from pathlib import Path
-            import os,re
-            p=Path('android/app/build.gradle.kts');s=p.read_text()
-            alias=os.environ.get('PAQUETERIA_KEY_ALIAS','').strip()
-            sp=os.environ.get('PAQUETERIA_KEYSTORE_PASSWORD','').strip()
-            kp=os.environ.get('PAQUETERIA_KEY_PASSWORD','').strip()
-            if alias and sp and kp:
-                def esc(v): return v.replace('\\','\\\\').replace('"','\\\"')
-                block='''    signingConfigs {
-                    create("paqueteriaRelease") {
-                        keyAlias = "''' + esc(alias) + '''"
-                        keyPassword = "''' + esc(kp) + '''"
-                        storeFile = file("paqueteria-release.jks")
-                        storePassword = "''' + esc(sp) + '''"
-                    }
-                }
-
-            '''
-                if 'create("paqueteriaRelease")' not in s:
-                    s=s.replace('    buildTypes {',block+'    buildTypes {',1)
-                s=re.sub(r'(getByName\("release"\)\s*\{)(.*?)(\n\s*\})',lambda m:m.group(1)+m.group(2)+'\n            signingConfig = signingConfigs.getByName("paqueteriaRelease")'+m.group(3),s,count=1,flags=re.S)
-                p.write_text(s)
-            PY
           fi
+          python3 - <<'PY'
+          from pathlib import Path
+          import os, re
+
+          p = Path('android/app/build.gradle.kts')
+          s = p.read_text()
+          s = re.sub(
+              r'namespace\s*=\s*"[^"]+"',
+              'namespace = "com.angelapps.paqueteria"',
+              s,
+              count=1,
+          )
+          s = re.sub(
+              r'applicationId\s*=\s*"[^"]+"',
+              'applicationId = "com.angelapps.paqueteria"',
+              s,
+              count=1,
+          )
+
+          alias = os.environ.get('PAQUETERIA_KEY_ALIAS', '').strip()
+          store_password = os.environ.get('PAQUETERIA_KEYSTORE_PASSWORD', '').strip()
+          key_password = os.environ.get('PAQUETERIA_KEY_PASSWORD', '').strip()
+          keystore = Path('android/app/paqueteria-release.jks')
+
+          if keystore.exists() and alias and store_password and key_password:
+              def esc(value):
+                  return value.replace('\\', '\\\\').replace('"', '\\"')
+
+              signing = '''    signingConfigs {
+                  create("paqueteriaRelease") {
+                      keyAlias = "''' + esc(alias) + '''"
+                      keyPassword = "''' + esc(key_password) + '''"
+                      storeFile = file("paqueteria-release.jks")
+                      storePassword = "''' + esc(store_password) + '''"
+                  }
+              }
+
+          '''
+              if 'create("paqueteriaRelease")' not in s:
+                  s = s.replace('    buildTypes {', signing + '    buildTypes {', 1)
+              s = re.sub(
+                  r'(getByName\("release"\)\s*\{)(.*?)(\n\s*\})',
+                  lambda m: (
+                      m.group(1)
+                      + m.group(2)
+                      + '\n            signingConfig = signingConfigs.getByName("paqueteriaRelease")'
+                      + m.group(3)
+                  ),
+                  s,
+                  count=1,
+                  flags=re.S,
+              )
+
+          p.write_text(s)
+          PY
 
       - name: Get dependencies
         working-directory: app
