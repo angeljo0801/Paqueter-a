@@ -124,9 +124,26 @@ jobs:
         working-directory: app
         run: flutter analyze --no-fatal-infos --no-fatal-warnings lib
 
-      - name: Build release APK
+      - name: Build release APK with increasing versionCode
         working-directory: app
-        run: flutter build apk --release
+        run: flutter build apk --release --build-number "${GITHUB_RUN_NUMBER}"
+
+      - name: Record build identity
+        working-directory: app
+        env:
+          PAQUETERIA_KEYSTORE_B64: ${{ secrets.PAQUETERIA_KEYSTORE_B64 }}
+        shell: bash
+        run: |
+          {
+            echo "applicationId=com.angelapps.paqueteria"
+            echo "buildNumber=$GITHUB_RUN_NUMBER"
+            if [ -n "$PAQUETERIA_KEYSTORE_B64" ]; then
+              echo "signing=persistent"
+            else
+              echo "signing=temporary-debug"
+              echo "::warning::Paquetería todavía no tiene la clave persistente configurada; Android puede rechazar actualizaciones entre builds."
+            fi
+          } > build/app/outputs/flutter-apk/BUILD_IDENTITY.txt
 
       - name: Name APK from app version
         id: version
@@ -142,7 +159,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Paqueteria-v${{ steps.version.outputs.version }}-APK
-          path: ${{ steps.version.outputs.apk }}
+          path: |
+            ${{ steps.version.outputs.apk }}
+            app/build/app/outputs/flutter-apk/BUILD_IDENTITY.txt
           retention-days: 30
 
       - name: Publish GitHub Release
