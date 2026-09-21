@@ -1,26 +1,26 @@
 # Paquetería
 
-Repositorio oficial de la aplicación **Paquetería**.
+Repositorio oficial de la aplicación Android **Paquetería**.
 
-## Estado actual
+## Versión actual
 
-- Última APK verificada: **Paquetería v2.3.4**
-- APK: `Paqueteria-v2.3.4.apk`
-- Tamaño aproximado del APK: **107.9 MB**
-- Paquete comprimido: `Paqueteria-v2.3.4-APK.zip` (~52.1 MB)
+- **Paquetería v2.4.1**
+- Código fuente principal: `paqueteria/`
+- APK oficial: publicada en **GitHub Releases**
+- Archivo: `Paqueteria-v2.4.1.apk`
+- Tamaño: 108,176,252 bytes
 
-El APK supera el límite normal de 100 MB para archivos Git. La solución usada en este repositorio es:
+## Compilación automática
 
-1. Guardar en el repositorio el ZIP comprimido, que está por debajo de 100 MB.
-2. GitHub Actions lo descomprime.
-3. El workflow publica automáticamente el APK real en **GitHub Releases**, donde puede superar 100 MB.
+El repositorio compila la APK directamente desde el código fuente con GitHub Actions.
 
-## Subir una nueva versión
+Cada cambio relevante en `paqueteria/`, en el parche Android o en el workflow:
 
-El archivo debe llamarse siguiendo este patrón:
+1. prepara el proyecto Flutter/Android;
+2. aplica la integración nativa necesaria;
+3. ejecuta análisis;
+4. compila la APK release;
+5. guarda la APK como artefacto de Actions;
+6. publica o actualiza automáticamente el GitHub Release correspondiente.
 
-`Paqueteria-vX.Y.Z-APK.zip`
-
-Dentro del ZIP debe existir un archivo `.apk`.
-
-Al hacer push del ZIP, el workflow **Publicar APK de Paquetería** crea o actualiza el Release correspondiente y adjunta el APK.
+La versión se obtiene directamente de `paqueteria/pubspec.yaml`.
