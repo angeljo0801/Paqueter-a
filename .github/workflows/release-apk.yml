@@ -126,7 +126,11 @@ jobs:
 
       - name: Build release APK with increasing versionCode
         working-directory: app
-        run: flutter build apk --release --build-number "${GITHUB_RUN_NUMBER}"
+        shell: bash
+        run: |
+          BUILD_NUMBER=$((1000 + GITHUB_RUN_NUMBER))
+          echo "PAQUETERIA_BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
+          flutter build apk --release --build-number "$BUILD_NUMBER"
 
       - name: Record build identity
         working-directory: app
@@ -136,7 +140,7 @@ jobs:
         run: |
           {
             echo "applicationId=com.angelapps.paqueteria"
-            echo "buildNumber=$GITHUB_RUN_NUMBER"
+            echo "buildNumber=$PAQUETERIA_BUILD_NUMBER"
             if [ -n "$PAQUETERIA_KEYSTORE_B64" ]; then
               echo "signing=persistent"
             else
