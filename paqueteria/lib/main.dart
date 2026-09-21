@@ -13,6 +13,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'backup_service.dart';
 
 part 'clients.dart';
 part 'purchases.dart';
@@ -24,9 +25,12 @@ part 'extras.dart';
 part 'tracking_service.dart';
 part 'agents.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const PaqueteriaApp());
+  try {
+    await PaqueteriaBackupService.autoBackupIfDue();
+  } catch (_) {}
 }
 
 class PaqueteriaApp extends StatelessWidget {
