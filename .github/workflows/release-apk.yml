@@ -84,7 +84,7 @@ jobs:
               def esc(value):
                   return value.replace('\\', '\\\\').replace('"', '\\"')
 
-              signing = '''    signingConfigs {
+              block = '''    signingConfigs {
                   create("paqueteriaRelease") {
                       keyAlias = "''' + esc(alias) + '''"
                       keyPassword = "''' + esc(key_password) + '''"
@@ -95,7 +95,7 @@ jobs:
 
           '''
               if 'create("paqueteriaRelease")' not in s:
-                  s = s.replace('    buildTypes {', signing + '    buildTypes {', 1)
+                  s = s.replace('    buildTypes {', block + '    buildTypes {', 1)
               s = re.sub(
                   r'(getByName\("release"\)\s*\{)(.*?)(\n\s*\})',
                   lambda m: (
