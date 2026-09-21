@@ -137,6 +137,13 @@ else:
     for perm in ['READ_CONTACTS', 'POST_NOTIFICATIONS', 'RECEIVE_BOOT_COMPLETED', 'VIBRATE']:
         if f'android.permission.{perm}' not in m:
             m = m.replace('<manifest xmlns:android="http://schemas.android.com/apk/res/android">', f'<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n    <uses-permission android:name="android.permission.{perm}" />')
+    if 'android.permission.WRITE_EXTERNAL_STORAGE' not in m:
+        m = m.replace('<manifest xmlns:android="http://schemas.android.com/apk/res/android">', '<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />')
+    if 'android.permission.READ_EXTERNAL_STORAGE' not in m:
+        m = m.replace('<manifest xmlns:android="http://schemas.android.com/apk/res/android">', '<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />')
+    for perm in []:
+        if f'android.permission.{perm}' not in m:
+            m = m.replace('<manifest xmlns:android="http://schemas.android.com/apk/res/android">', f'<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n    <uses-permission android:name="android.permission.{perm}" />')
 m = m.replace('android:label="paqueteria"', 'android:label="Paquetería"')
 sync_permission = 'com.angelapps.paqueteria.permission.FINANCE_SYNC'
 if sync_permission not in m:
@@ -155,10 +162,19 @@ manifest.write_text(m)
 import base64
 kotlin_dir = Path('app/android/app/src/main/kotlin/com/angelapps/paqueteria')
 kotlin_dir.mkdir(parents=True, exist_ok=True)
+backup_bridge = Path('paqueteria/android/PaqueteriaBackupStorageBridge.kt')
+main_activity = Path('paqueteria/android/MainActivity.kt')
+if backup_bridge.exists():
+    (kotlin_dir / 'PaqueteriaBackupStorageBridge.kt').write_text(backup_bridge.read_text())
+if main_activity.exists():
+    (kotlin_dir / 'MainActivity.kt').write_text(main_activity.read_text())
 (kotlin_dir / 'FinanceSyncProvider.kt').write_bytes(base64.b64decode('cGFja2FnZSBjb20uYW5nZWxhcHBzLnBhcXVldGVyaWEKCmltcG9ydCBhbmRyb2lkLmNvbnRlbnQuQ29udGVudFByb3ZpZGVyCmltcG9ydCBhbmRyb2lkLmNvbnRlbnQuQ29udGVudFZhbHVlcwppbXBvcnQgYW5kcm9pZC5jb250ZW50LkNvbnRleHQKaW1wb3J0IGFuZHJvaWQuZGF0YWJhc2UuQ3Vyc29yCmltcG9ydCBhbmRyb2lkLm5ldC5VcmkKaW1wb3J0IGFuZHJvaWQub3MuUGFyY2VsRmlsZURlc2NyaXB0b3IKaW1wb3J0IGphdmEuaW8uRmlsZU91dHB1dFN0cmVhbQoKY2xhc3MgRmluYW5jZVN5bmNQcm92aWRlciA6IENvbnRlbnRQcm92aWRlcigpIHsKICAgIG92ZXJyaWRlIGZ1biBvbkNyZWF0ZSgpOiBCb29sZWFuID0gdHJ1ZQoKICAgIG92ZXJyaWRlIGZ1biBnZXRUeXBlKHVyaTogVXJpKTogU3RyaW5nID0gImFwcGxpY2F0aW9uL2pzb24iCgogICAgb3ZlcnJpZGUgZnVuIG9wZW5GaWxlKHVyaTogVXJpLCBtb2RlOiBTdHJpbmcpOiBQYXJjZWxGaWxlRGVzY3JpcHRvciB7CiAgICAgICAgdmFsIHBpcGUgPSBQYXJjZWxGaWxlRGVzY3JpcHRvci5jcmVhdGVQaXBlKCkKICAgICAgICB2YWwgcHJlZnMgPSBjb250ZXh0ISEuZ2V0U2hhcmVkUHJlZmVyZW5jZXMoIkZsdXR0ZXJTaGFyZWRQcmVmZXJlbmNlcyIsIENvbnRleHQuTU9ERV9QUklWQVRFKQogICAgICAgIHZhbCBzbmFwc2hvdCA9IHByZWZzLmdldFN0cmluZygiZmx1dHRlci5maW5hbmNlX3N5bmNfc25hcHNob3QiLCAie30iKSA/OiAie30iCiAgICAgICAgVGhyZWFkIHsKICAgICAgICAgICAgdHJ5IHsKICAgICAgICAgICAgICAgIEZpbGVPdXRwdXRTdHJlYW0ocGlwZVsxXS5maWxlRGVzY3JpcHRvcikudXNlIHsgb3V0IC0+CiAgICAgICAgICAgICAgICAgICAgb3V0LndyaXRlKHNuYXBzaG90LnRvQnl0ZUFycmF5KENoYXJzZXRzLlVURl84KSkKICAgICAgICAgICAgICAgICAgICBvdXQuZmx1c2goKQogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9IGZpbmFsbHkgewogICAgICAgICAgICAgICAgdHJ5IHsgcGlwZVsxXS5jbG9zZSgpIH0gY2F0Y2ggKF86IEV4Y2VwdGlvbikge30KICAgICAgICAgICAgfQogICAgICAgIH0uc3RhcnQoKQogICAgICAgIHJldHVybiBwaXBlWzBdCiAgICB9CgogICAgb3ZlcnJpZGUgZnVuIHF1ZXJ5KHVyaTogVXJpLCBwcm9qZWN0aW9uOiBBcnJheTxvdXQgU3RyaW5nPj8sIHNlbGVjdGlvbjogU3RyaW5nPywgc2VsZWN0aW9uQXJnczogQXJyYXk8b3V0IFN0cmluZz4/LCBzb3J0T3JkZXI6IFN0cmluZz8pOiBDdXJzb3I/ID0gbnVsbAogICAgb3ZlcnJpZGUgZnVuIGluc2VydCh1cmk6IFVyaSwgdmFsdWVzOiBDb250ZW50VmFsdWVzPyk6IFVyaT8gPSBudWxsCiAgICBvdmVycmlkZSBmdW4gZGVsZXRlKHVyaTogVXJpLCBzZWxlY3Rpb246IFN0cmluZz8sIHNlbGVjdGlvbkFyZ3M6IEFycmF5PG91dCBTdHJpbmc+Pyk6IEludCA9IDAKICAgIG92ZXJyaWRlIGZ1biB1cGRhdGUodXJpOiBVcmksIHZhbHVlczogQ29udGVudFZhbHVlcz8sIHNlbGVjdGlvbjogU3RyaW5nPywgc2VsZWN0aW9uQXJnczogQXJyYXk8b3V0IFN0cmluZz4/KTogSW50ID0gMAp9Cg=='))
 
 gradle = Path('app/android/app/build.gradle.kts')
 g = gradle.read_text()
+import re, os
+g = re.sub(r'namespace\s*=\s*"[^"]+"', 'namespace = "com.angelapps.paqueteria"', g, count=1)
+g = re.sub(r'applicationId\s*=\s*"[^"]+"', 'applicationId = "com.angelapps.paqueteria"', g, count=1)
 if 'isCoreLibraryDesugaringEnabled' not in g:
     g = g.replace('compileOptions {', 'compileOptions {\n        isCoreLibraryDesugaringEnabled = true')
 deps = '''\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n    implementation("com.google.mlkit:text-recognition-chinese:16.0.1")\n    implementation("com.google.mlkit:text-recognition-devanagari:16.0.1")\n    implementation("com.google.mlkit:text-recognition-japanese:16.0.1")\n    implementation("com.google.mlkit:text-recognition-korean:16.0.1")\n}\n'''
