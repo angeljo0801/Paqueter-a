@@ -1,57 +1,92 @@
-name: Publicar APK de Paquetería
+name: Build and publish Paqueteria APK
 
 on:
   push:
+    branches: ["main"]
     paths:
-      - 'Paqueteria-*-APK.zip'
+      - "paqueteria/**"
+      - ".github/patch_paqueteria.py"
+      - ".github/workflows/release-apk.yml"
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
+    timeout-minutes: 35
+
     steps:
-      - name: Descargar repositorio
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Localizar paquete
-        id: pkg
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install SVG converter
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y librsvg2-bin
+
+      - name: Create Android scaffold
+        run: |
+          flutter create --platforms=android --org com.angelapps --project-name paqueteria app
+          rm -rf app/lib app/test
+          cp -R paqueteria/lib app/lib
+          cp paqueteria/pubspec.yaml app/pubspec.yaml
+          mkdir -p app/assets
+          rsvg-convert -w 1024 -h 1024 paqueteria/assets/icon.svg -o app/assets/icon.png
+
+      - name: Patch source and Android
+        run: python3 .github/patch_paqueteria.py
+
+      - name: Get dependencies
+        working-directory: app
+        run: flutter pub get
+
+      - name: Generate launcher icon
+        working-directory: app
+        run: dart run flutter_launcher_icons
+
+      - name: Analyze
+        working-directory: app
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings lib
+
+      - name: Build release APK
+        working-directory: app
+        run: flutter build apk --release
+
+      - name: Name APK from app version
+        id: version
         shell: bash
         run: |
-          set -euo pipefail
-          ZIP="$(ls -1t Paqueteria-*-APK.zip 2>/dev/null | head -n1)"
-          if [ -z "$ZIP" ]; then
-            echo "No se encontró Paqueteria-*-APK.zip"
-            exit 1
-          fi
-          mkdir -p release
-          unzip -o "$ZIP" -d release
-          APK="$(find release -maxdepth 1 -type f -name '*.apk' | head -n1)"
-          if [ -z "$APK" ]; then
-            echo "El ZIP no contiene un APK"
-            exit 1
-          fi
-          VERSION="$(basename "$ZIP" | sed -E 's/^Paqueteria-([^ -]+)-APK\.zip$/\1/')"
-          if [ "$VERSION" = "$(basename "$ZIP")" ]; then
-            VERSION="latest"
-          fi
-          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
-          echo "apk=$APK" >> "$GITHUB_OUTPUT"
+          VERSION="$(awk '/^version:/{print $2}' paqueteria/pubspec.yaml | cut -d+ -f1)"
+          APK="Paqueteria-v${VERSION}.apk"
+          cp app/build/app/outputs/flutter-apk/app-release.apk "$APK"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "apk=$APK" >> "$GITHUB_OUTPUT"
 
-      - name: Crear o actualizar Release
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Paqueteria-v${{ steps.version.outputs.version }}-APK
+          path: ${{ steps.version.outputs.apk }}
+          retention-days: 30
+
+      - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-          APK: ${{ steps.pkg.outputs.apk }}
-          VERSION: ${{ steps.pkg.outputs.version }}
+          VERSION: ${{ steps.version.outputs.version }}
+          APK: ${{ steps.version.outputs.apk }}
         shell: bash
         run: |
-          set -euo pipefail
-          TAG="$VERSION"
+          TAG="v$VERSION"
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "$APK" --clobber
           else
-            gh release create "$TAG" "$APK" --title "Paquetería $VERSION" --notes "APK compilada de Paquetería."
+            gh release create "$TAG" "$APK" --title "Paqueteria $TAG" --notes "APK compilada automaticamente desde el codigo fuente del repositorio."
           fi
