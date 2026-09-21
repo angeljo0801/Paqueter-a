@@ -1,0 +1,57 @@
+name: Publicar APK de Paquetería
+
+on:
+  push:
+    paths:
+      - 'Paqueteria-*-APK.zip'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Localizar paquete
+        id: pkg
+        shell: bash
+        run: |
+          set -euo pipefail
+          ZIP="$(ls -1t Paqueteria-*-APK.zip 2>/dev/null | head -n1)"
+          if [ -z "$ZIP" ]; then
+            echo "No se encontró Paqueteria-*-APK.zip"
+            exit 1
+          fi
+          mkdir -p release
+          unzip -o "$ZIP" -d release
+          APK="$(find release -maxdepth 1 -type f -name '*.apk' | head -n1)"
+          if [ -z "$APK" ]; then
+            echo "El ZIP no contiene un APK"
+            exit 1
+          fi
+          VERSION="$(basename "$ZIP" | sed -E 's/^Paqueteria-([^ -]+)-APK\.zip$/\1/')"
+          if [ "$VERSION" = "$(basename "$ZIP")" ]; then
+            VERSION="latest"
+          fi
+          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
+          echo "apk=$APK" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Crear o actualizar Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APK: ${{ steps.pkg.outputs.apk }}
+          VERSION: ${{ steps.pkg.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="$VERSION"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$APK" --clobber
+          else
+            gh release create "$TAG" "$APK" --title "Paquetería $VERSION" --notes "APK compilada de Paquetería."
+          fi
