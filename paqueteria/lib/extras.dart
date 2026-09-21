@@ -232,5 +232,6 @@ _more(context,Icons.receipt_long,'Gastos del negocio','Gastos generales fuera de
 _more(context,Icons.analytics,'Finanzas','Resumen de ingresos, gastos y ganancias',const FinancePage()),
 _more(context,Icons.sync_alt,'Sincronizar con Finanzas','Compartir compras, paquetes, pendientes y gastos con Finanzas Definitiva',const FinanceSyncPage()),
 _more(context,Icons.settings,'Configuración','Tarifa por libra, comisión y reglas',const SettingsPage()),
+_more(context,Icons.backup_outlined,'Copias de seguridad','Crear, restaurar y configurar copias automáticas',const PaqueteriaBackupPage()),
 _more(context,Icons.delete_outline,'Papelera','Restaurar registros eliminados',const TrashPage()),
 ]));Widget _more(BuildContext context,IconData icon,String title,String sub,Widget page)=>ListTile(leading:Icon(icon),title:Text(title),subtitle:Text(sub),trailing:const Icon(Icons.chevron_right),onTap:()=>Navigator.push(context,MaterialPageRoute(builder:(_)=>page)));}
