@@ -55,9 +55,10 @@ new_main = """Future<void> main() async {
   } catch (_) {}
   runApp(const PaqueteriaApp());
 }"""
-if old_main not in ms:
-    raise SystemExit('No se encontró main() para aplicar la integración de background')
-ms = ms.replace(old_main, new_main)
+if old_main in ms:
+    ms = ms.replace(old_main, new_main)
+elif "Future<void> main() async {" not in ms:
+    raise SystemExit('No se encontró main() compatible para aplicar la integración de background')
 ms = ms.replace(
     "appBar: AppBar(title: const Text('Paquetería'), actions: [",
     "appBar: AppBar(title: const Text('Paquetería'), actions: [\n        IconButton(tooltip: 'Buscar tracking o cliente', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BusinessSearchPage())), icon: const Icon(Icons.search)),"
