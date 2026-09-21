@@ -1,7 +1,7 @@
 name: paqueteria
 publish_to: 'none'
 description: Herramientas de negocio para paqueteria a Cuba.
-version: 2.4.1+20
+version: 2.4.2+21
 
 environment:
   sdk: '>=3.6.0 <4.0.0'
@@ -20,6 +20,7 @@ dependencies:
   mobile_scanner: ^7.0.1
   url_launcher: ^6.3.1
   path_provider: ^2.1.5
+  archive: ^4.0.9
   pdf: ^3.11.3
   share_plus: ^10.1.4
   cross_file: ^0.3.4+2
