@@ -44,6 +44,43 @@ jobs:
       - name: Patch source and Android
         run: python3 .github/patch_paqueteria.py
 
+      - name: Configure stable signing
+        working-directory: app
+        env:
+          PAQUETERIA_KEYSTORE_B64: ${{ secrets.PAQUETERIA_KEYSTORE_B64 }}
+          PAQUETERIA_KEYSTORE_PASSWORD: ${{ secrets.PAQUETERIA_KEYSTORE_PASSWORD }}
+          PAQUETERIA_KEY_ALIAS: ${{ secrets.PAQUETERIA_KEY_ALIAS }}
+          PAQUETERIA_KEY_PASSWORD: ${{ secrets.PAQUETERIA_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          if [ -n "$PAQUETERIA_KEYSTORE_B64" ]; then
+            printf '%s' "$PAQUETERIA_KEYSTORE_B64" | base64 --decode > android/app/paqueteria-release.jks
+            python3 - <<'PY'
+            from pathlib import Path
+            import os,re
+            p=Path('android/app/build.gradle.kts');s=p.read_text()
+            alias=os.environ.get('PAQUETERIA_KEY_ALIAS','').strip()
+            sp=os.environ.get('PAQUETERIA_KEYSTORE_PASSWORD','').strip()
+            kp=os.environ.get('PAQUETERIA_KEY_PASSWORD','').strip()
+            if alias and sp and kp:
+                def esc(v): return v.replace('\\','\\\\').replace('"','\\\"')
+                block='''    signingConfigs {
+                    create("paqueteriaRelease") {
+                        keyAlias = "''' + esc(alias) + '''"
+                        keyPassword = "''' + esc(kp) + '''"
+                        storeFile = file("paqueteria-release.jks")
+                        storePassword = "''' + esc(sp) + '''"
+                    }
+                }
+
+            '''
+                if 'create("paqueteriaRelease")' not in s:
+                    s=s.replace('    buildTypes {',block+'    buildTypes {',1)
+                s=re.sub(r'(getByName\("release"\)\s*\{)(.*?)(\n\s*\})',lambda m:m.group(1)+m.group(2)+'\n            signingConfig = signingConfigs.getByName("paqueteriaRelease")'+m.group(3),s,count=1,flags=re.S)
+                p.write_text(s)
+            PY
+          fi
+
       - name: Get dependencies
         working-directory: app
         run: flutter pub get
