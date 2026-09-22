@@ -73,6 +73,19 @@ jobs:
           PAQUETERIA_KEY_PASSWORD: ${{ secrets.PAQUETERIA_KEY_PASSWORD }}
         shell: bash
         run: |
+          normalize_secret() {
+            local name="$1"
+            local raw="$2"
+            if printf '%s' "$raw" | grep -q "$name="; then
+              printf '%s\n' "$raw" | sed -n "s/^.*${name}[[:space:]]*=[[:space:]]*//p" | head -n 1 | tr -d '\r'
+            else
+              printf '%s' "$raw" | tr -d '\r'
+            fi
+          }
+          export PAQUETERIA_KEYSTORE_B64="$(normalize_secret PAQUETERIA_KEYSTORE_B64 "$PAQUETERIA_KEYSTORE_B64" | tr -cd 'A-Za-z0-9+/=')"
+          export PAQUETERIA_KEYSTORE_PASSWORD="$(normalize_secret PAQUETERIA_KEYSTORE_PASSWORD "$PAQUETERIA_KEYSTORE_PASSWORD")"
+          export PAQUETERIA_KEY_ALIAS="$(normalize_secret PAQUETERIA_KEY_ALIAS "$PAQUETERIA_KEY_ALIAS")"
+          export PAQUETERIA_KEY_PASSWORD="$(normalize_secret PAQUETERIA_KEY_PASSWORD "$PAQUETERIA_KEY_PASSWORD")"
           if [ -n "$PAQUETERIA_KEYSTORE_B64" ]; then
             printf '%s' "$PAQUETERIA_KEYSTORE_B64" | base64 --decode > android/app/paqueteria-release.jks
           fi
