@@ -165,6 +165,42 @@ jobs:
           echo "PAQUETERIA_BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
           flutter build apk --release --build-number "$BUILD_NUMBER"
 
+      - name: Apply persistent APK signature
+        working-directory: app
+        env:
+          PAQUETERIA_KEYSTORE_B64: ${{ secrets.PAQUETERIA_KEYSTORE_B64 }}
+          PAQUETERIA_KEYSTORE_PASSWORD: ${{ secrets.PAQUETERIA_KEYSTORE_PASSWORD }}
+          PAQUETERIA_KEY_ALIAS: ${{ secrets.PAQUETERIA_KEY_ALIAS }}
+          PAQUETERIA_KEY_PASSWORD: ${{ secrets.PAQUETERIA_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          normalize_secret() {
+            local name="$1"
+            local raw="$2"
+            if printf '%s' "$raw" | grep -q "$name="; then
+              printf '%s\n' "$raw" | sed -n "s/^.*${name}[[:space:]]*=[[:space:]]*//p" | head -n 1 | tr -d '\r'
+            else
+              printf '%s' "$raw" | tr -d '\r'
+            fi
+          }
+          KEYSTORE_B64="$(normalize_secret PAQUETERIA_KEYSTORE_B64 "$PAQUETERIA_KEYSTORE_B64" | tr -cd 'A-Za-z0-9+/=')"
+          STORE_PASSWORD="$(normalize_secret PAQUETERIA_KEYSTORE_PASSWORD "$PAQUETERIA_KEYSTORE_PASSWORD")"
+          KEY_ALIAS="$(normalize_secret PAQUETERIA_KEY_ALIAS "$PAQUETERIA_KEY_ALIAS")"
+          KEY_PASSWORD="$(normalize_secret PAQUETERIA_KEY_PASSWORD "$PAQUETERIA_KEY_PASSWORD")"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > android/app/paqueteria-release.jks
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -n "$APKSIGNER"
+          "$APKSIGNER" sign \
+            --ks android/app/paqueteria-release.jks \
+            --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass "pass:$STORE_PASSWORD" \
+            --key-pass "pass:$KEY_PASSWORD" \
+            --out build/app/outputs/flutter-apk/app-release-stable.apk \
+            build/app/outputs/flutter-apk/app-release.apk
+          mv build/app/outputs/flutter-apk/app-release-stable.apk build/app/outputs/flutter-apk/app-release.apk
+          "$APKSIGNER" verify --verbose build/app/outputs/flutter-apk/app-release.apk
+          rm -f android/app/paqueteria-release.jks
+
       - name: Record build identity
         working-directory: app
         env:
