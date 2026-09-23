@@ -1,0 +1,176 @@
+name: Build and publish Alas Cargo Agentes APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "agentes/**"
+      - ".github/workflows/release-agentes-apk.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Verify persistent signing key
+        env:
+          AGENTES_KEYSTORE_B64: ${{ secrets.PAQUETERIA_KEYSTORE_B64 }}
+          AGENTES_KEYSTORE_PASSWORD: ${{ secrets.PAQUETERIA_KEYSTORE_PASSWORD }}
+          AGENTES_KEY_ALIAS: ${{ secrets.PAQUETERIA_KEY_ALIAS }}
+          AGENTES_KEY_PASSWORD: ${{ secrets.PAQUETERIA_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          missing=0
+          for name in AGENTES_KEYSTORE_B64 AGENTES_KEYSTORE_PASSWORD AGENTES_KEY_ALIAS AGENTES_KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then echo "::error::Missing stable signing value $name"; missing=1; fi
+          done
+          test "$missing" -eq 0
+
+      - name: Install SVG converter
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y librsvg2-bin
+
+      - name: Restore source and create Android scaffold
+        shell: bash
+        run: |
+          mkdir -p agentes_src
+          cat agentes/source_bundle.b64.0 agentes/source_bundle.b64.1 agentes/source_bundle.b64.2 agentes/source_bundle.b64.3 | base64 --decode | tar -xz -C agentes_src
+          flutter create --platforms=android --org com.angelapps --project-name paqueteria_agentes app
+          rm -rf app/lib app/test
+          cp -R agentes_src/lib app/lib
+          cp agentes_src/pubspec.yaml app/pubspec.yaml
+          mkdir -p app/assets
+          rsvg-convert -w 1024 -h 1024 agentes_src/assets/icon.svg -o app/assets/icon.png
+
+      - name: Patch Android identity and backup bridge
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          manifest=Path('app/android/app/src/main/AndroidManifest.xml')
+          m=manifest.read_text()
+          if 'android.permission.CAMERA' not in m:
+              m=m.replace('<manifest xmlns:android="http://schemas.android.com/apk/res/android">','<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />')
+          m=m.replace('android:label="paqueteria_agentes"','android:label="Alas Cargo Agentes"')
+          manifest.write_text(m)
+          gradle=Path('app/android/app/build.gradle.kts')
+          g=gradle.read_text()
+          g=re.sub(r'namespace\s*=\s*"[^"]+"','namespace = "com.angelapps.paqueteria_agentes"',g,count=1)
+          g=re.sub(r'applicationId\s*=\s*"[^"]+"','applicationId = "com.angelapps.paqueteria_agentes"',g,count=1)
+          gradle.write_text(g)
+          kotlin=Path('app/android/app/src/main/kotlin/com/angelapps/paqueteria_agentes')
+          kotlin.mkdir(parents=True,exist_ok=True)
+          (kotlin/'MainActivity.kt').write_text(Path('agentes_src/android/MainActivity.kt').read_text())
+          (kotlin/'AgentBackupStorageBridge.kt').write_text(Path('agentes_src/android/AgentBackupStorageBridge.kt').read_text())
+          PY
+
+      - name: Configure persistent signing
+        working-directory: app
+        env:
+          AGENTES_KEYSTORE_B64: ${{ secrets.PAQUETERIA_KEYSTORE_B64 }}
+          AGENTES_KEYSTORE_PASSWORD: ${{ secrets.PAQUETERIA_KEYSTORE_PASSWORD }}
+          AGENTES_KEY_ALIAS: ${{ secrets.PAQUETERIA_KEY_ALIAS }}
+          AGENTES_KEY_PASSWORD: ${{ secrets.PAQUETERIA_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          normalize_secret() {
+            local name="$1"; local raw="$2"
+            if printf '%s' "$raw" | grep -q "$name="; then
+              printf '%s\n' "$raw" | sed -n "s/^.*${name}[[:space:]]*=[[:space:]]*//p" | head -n 1 | tr -d '\r'
+            else
+              printf '%s' "$raw" | tr -d '\r'
+            fi
+          }
+          export AGENTES_KEYSTORE_B64="$(normalize_secret AGENTES_KEYSTORE_B64 "$AGENTES_KEYSTORE_B64" | tr -cd 'A-Za-z0-9+/=')"
+          export AGENTES_KEYSTORE_PASSWORD="$(normalize_secret AGENTES_KEYSTORE_PASSWORD "$AGENTES_KEYSTORE_PASSWORD")"
+          export AGENTES_KEY_ALIAS="$(normalize_secret AGENTES_KEY_ALIAS "$AGENTES_KEY_ALIAS")"
+          export AGENTES_KEY_PASSWORD="$(normalize_secret AGENTES_KEY_PASSWORD "$AGENTES_KEY_PASSWORD")"
+          printf '%s' "$AGENTES_KEYSTORE_B64" | base64 --decode > android/app/agentes-release.jks
+          python3 - <<'PY'
+          from pathlib import Path
+          import os,re
+          p=Path('android/app/build.gradle.kts')
+          s=p.read_text()
+          def esc(v): return v.replace('\\','\\\\').replace('"','\\"')
+          block='''    signingConfigs {\n        create("agentesRelease") {\n            keyAlias = "'''+esc(os.environ['AGENTES_KEY_ALIAS'])+'''"\n            keyPassword = "'''+esc(os.environ['AGENTES_KEY_PASSWORD'])+'''"\n            storeFile = file("agentes-release.jks")\n            storePassword = "'''+esc(os.environ['AGENTES_KEYSTORE_PASSWORD'])+'''"\n        }\n    }\n\n'''
+          if 'create("agentesRelease")' not in s:
+              s=s.replace('    buildTypes {',block+'    buildTypes {',1)
+          s=re.sub(r'(getByName\("release"\)\s*\{)(.*?)(\n\s*\})',
+                   lambda m:m.group(1)+m.group(2)+'\n            signingConfig = signingConfigs.getByName("agentesRelease")'+m.group(3),
+                   s,count=1,flags=re.S)
+          p.write_text(s)
+          PY
+
+      - name: Get dependencies
+        working-directory: app
+        run: flutter pub get
+
+      - name: Generate launcher icon
+        working-directory: app
+        run: dart run flutter_launcher_icons
+
+      - name: Analyze
+        working-directory: app
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings lib
+
+      - name: Build release APK
+        working-directory: app
+        shell: bash
+        run: |
+          BUILD_NUMBER=$((13000 + GITHUB_RUN_NUMBER))
+          echo "AGENTES_BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
+          flutter build apk --release --build-number "$BUILD_NUMBER"
+
+      - name: Verify signature and package identity
+        working-directory: app
+        shell: bash
+        run: |
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          "$APKSIGNER" verify --verbose --print-certs build/app/outputs/flutter-apk/app-release.apk
+          {
+            echo "applicationId=com.angelapps.paqueteria_agentes"
+            echo "versionName=1.3.1"
+            echo "buildNumber=$AGENTES_BUILD_NUMBER"
+            echo "signing=persistent"
+            echo "signingSecretSource=PAQUETERIA_*"
+          } > build/app/outputs/flutter-apk/BUILD_IDENTITY.txt
+          rm -f android/app/agentes-release.jks
+
+      - name: Name APK
+        run: cp app/build/app/outputs/flutter-apk/app-release.apk Alas-Cargo-Agentes-v1.3.1.apk
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Alas-Cargo-Agentes-v1.3.1-APK
+          path: |
+            Alas-Cargo-Agentes-v1.3.1.apk
+            app/build/app/outputs/flutter-apk/BUILD_IDENTITY.txt
+          retention-days: 30
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          TAG="agentes-v1.3.1"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" Alas-Cargo-Agentes-v1.3.1.apk --clobber
+          else
+            gh release create "$TAG" Alas-Cargo-Agentes-v1.3.1.apk --title "Alas Cargo Agentes v1.3.1" --notes "Mantenimiento: salvas/restauración e identidad de firma estable para futuras actualizaciones."
+          fi
