@@ -452,7 +452,7 @@ class WhatsBotPurchaseSyncService {
           'name': name.isEmpty ? 'Cliente WhatsApp' : name,
           'phone': phone,
           'email': '',
-          'notes': 'Creado desde un contacto aprobado en WhatsBot',
+          'notes': 'Creado automáticamente desde un contacto de WhatsApp',
           'whatsbotClientSyncId': externalId,
           'source': 'whatsbot',
           'deleted': false,
