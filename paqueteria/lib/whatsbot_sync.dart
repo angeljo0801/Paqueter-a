@@ -151,6 +151,10 @@ class WhatsBotPurchaseSyncService {
         'store': (purchase['store'] ?? '').toString(),
         'description': (purchase['description'] ?? '').toString(),
         'total': number(purchase['total']),
+        'orderNumber': (purchase['orderNumber'] ?? '').toString(),
+        'items': purchase['items'] ?? const <Map<String, dynamic>>[],
+        'ocrText': (purchase['ocrText'] ?? '').toString(),
+        'ocrMeta': purchase['ocrMeta'] ?? const <String, dynamic>{},
         'status': (purchase['status'] ?? '').toString(),
         'photos': photoStamp,
       };
@@ -184,6 +188,10 @@ class WhatsBotPurchaseSyncService {
         'description': (purchase['description'] ?? '').toString(),
         'store': (purchase['store'] ?? 'Paquetería').toString(),
         'total': number(purchase['total']),
+        'order_number': (purchase['orderNumber'] ?? '').toString(),
+        'items': purchase['items'] ?? const <Map<String, dynamic>>[],
+        'ocr_text': (purchase['ocrText'] ?? '').toString(),
+        'ocr_meta': purchase['ocrMeta'] ?? const <String, dynamic>{},
         'created_at': date.isEmpty ? DateTime.now().toUtc().toIso8601String() : date + 'T00:00:00Z',
         'photos': photos,
       };
@@ -502,7 +510,8 @@ class WhatsBotPurchaseSyncService {
           }
         }
       }
-      if (client == null) {
+      final unassigned = client == null && name.isEmpty && normalized.isEmpty;
+      if (client == null && !unassigned) {
         client = {
           'id': newId(),
           'name': name.isEmpty ? 'Cliente WhatsBot' : name,
@@ -513,7 +522,8 @@ class WhatsBotPurchaseSyncService {
         };
         clients.add(client);
         clientsChanged = true;
-      } else if ('${client['phone'] ?? ''}'.trim().isEmpty &&
+      } else if (client != null &&
+          '${client['phone'] ?? ''}'.trim().isEmpty &&
           phone.isNotEmpty) {
         client['phone'] = phone;
         clientsChanged = true;
@@ -556,8 +566,31 @@ class WhatsBotPurchaseSyncService {
       }
 
       final total = number(item['total']);
-      final clientTotal = total * (1 + commission / 100);
-      final clientId = '${client['id']}';
+      final clientTotal = unassigned ? 0.0 : total * (1 + commission / 100);
+      final clientId = client == null ? '' : '${client['id']}';
+
+      final remoteItems = <Map<String, dynamic>>[];
+      final rawItems = item['items'];
+      if (rawItems is List) {
+        for (final raw in rawItems) {
+          if (raw is! Map) continue;
+          final row = Map<String, dynamic>.from(raw);
+          row['id'] = '${row['id'] ?? newId()}';
+          row['name'] = '${row['name'] ?? ''}'.trim();
+          row['price'] = number(row['price']);
+          row['qty'] = number(row['qty']) <= 0 ? 1.0 : number(row['qty']);
+          if (clientId.isNotEmpty &&
+              '${row['clientId'] ?? ''}'.trim().isEmpty) {
+            row['clientId'] = clientId;
+          }
+          remoteItems.add(row);
+        }
+      }
+
+      final remoteOcrMeta = item['ocr_meta'] is Map
+          ? Map<String, dynamic>.from(item['ocr_meta'] as Map)
+          : <String, dynamic>{};
+
       final created =
           DateTime.tryParse('${item['created_at'] ?? ''}')?.toLocal();
       final dateText = created == null
@@ -577,26 +610,31 @@ class WhatsBotPurchaseSyncService {
         'total': total,
         'commissionPct': commission,
         'clientTotal': clientTotal,
-        'orderNumber': '',
+        'orderNumber': '${item['order_number'] ?? ''}'.trim(),
         'date': dateText,
         'status': 'Comprado',
         'receiptPath': photos.isEmpty ? '' : photos.first,
         'photoPath': photos.isEmpty ? '' : photos.first,
         'photoPaths': photos,
-        'ocrText': '',
-        'ocrMeta': const <String, dynamic>{},
-        'items': const <Map<String, dynamic>>[],
-        'allocations': [
-          {
-            'clientId': clientId,
-            'subtotal': total,
-            'extras': 0.0,
-            'commissionPct': commission,
-            'total': clientTotal,
-            'itemIds': const <String>[],
-          }
-        ],
-        'unassigned': false,
+        'ocrText': '${item['ocr_text'] ?? ''}',
+        'ocrMeta': remoteOcrMeta,
+        'items': remoteItems,
+        'allocations': unassigned
+            ? const <Map<String, dynamic>>[]
+            : [
+                {
+                  'clientId': clientId,
+                  'subtotal': total,
+                  'extras': 0.0,
+                  'commissionPct': commission,
+                  'total': clientTotal,
+                  'itemIds': remoteItems
+                      .map((e) => '${e['id'] ?? ''}')
+                      .where((e) => e.isNotEmpty)
+                      .toList(),
+                }
+              ],
+        'unassigned': unassigned,
         'whatsbotSyncId': externalId,
         'whatsbotRemoteId': item['id'],
         'source': 'whatsbot',
