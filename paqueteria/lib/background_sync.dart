@@ -13,6 +13,7 @@ void courierCallbackDispatcher() {
       await NotificationService.publishPendingCourierChanges();
       await FlightService.syncIfDue();
       await NotificationService.publishPendingFlightChanges();
+      await WhatsBotPurchaseSyncService.syncSilently();
       return true;
     } catch (_) {
       return false;
