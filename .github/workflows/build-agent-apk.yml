@@ -6,6 +6,7 @@ on:
     branches: ["main"]
     paths:
       - 'agentes_bundle/**'
+      - 'agentes_overrides/**'
       - 'agentes_icons/official.jpg.b64'
       - '.github/workflows/build-agent-apk.yml'
 
@@ -53,6 +54,38 @@ jobs:
           cat agentes_bundle/part*.txt > /tmp/alas-cargo-agentes-source.b64
           base64 --decode /tmp/alas-cargo-agentes-source.b64 > /tmp/alas-cargo-agentes-source.tar.gz
           tar -xzf /tmp/alas-cargo-agentes-source.tar.gz -C agentes
+          cp agentes_overrides/clients.dart agentes/lib/clients.dart
+          cp agentes_overrides/orders.dart agentes/lib/orders.dart
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          main = Path('agentes/lib/main.dart')
+          s = main.read_text()
+          if "package:flutter_contacts/flutter_contacts.dart" not in s:
+              s = s.replace("import 'package:flutter/material.dart';", "import 'package:flutter/material.dart';\nimport 'package:flutter_contacts/flutter_contacts.dart';")
+          main.write_text(s)
+
+          pub = Path('agentes/pubspec.yaml')
+          s = pub.read_text()
+          if 'flutter_contacts:' not in s:
+              s = s.replace('  shared_preferences: ^2.5.3\n', '  shared_preferences: ^2.5.3\n  flutter_contacts: ^2.5.0\n')
+          pub.write_text(s)
+
+          store = Path('agentes/lib/store.dart')
+          s = store.read_text()
+          replacement = """double orderStoreCost(Map<String, dynamic> e) => number(e['storeCost'] ?? e['storeTotal']);
+bool orderIsUnassigned(Map<String, dynamic> e) => e['unassigned'] == true || '${e['clientId'] ?? ''}'.trim().isEmpty;
+double orderSavedClientTotal(Map<String, dynamic> e) => number(e['clientTotal']);
+double orderClientTotal(Map<String, dynamic> e) => orderIsUnassigned(e) ? 0.0 : orderSavedClientTotal(e);
+double orderAgentMargin(Map<String, dynamic> e) => orderIsUnassigned(e) ? 0.0 : orderSavedClientTotal(e) - orderStoreCost(e);
+
+double packageWeight"""
+          s, count = re.subn(r"double orderStoreCost[\s\S]*?double packageWeight", replacement, s, count=1)
+          if count != 1:
+              raise SystemExit('No se pudo actualizar la lógica de pedidos sin cliente')
+          store.write_text(s)
+          PY
           sed -i 's/^version:.*/version: 1.3.3+33/' agentes/pubspec.yaml
           sed -i "s/adaptive_icon_background: '#0B65D8'/adaptive_icon_background: '#FFFFFF'/" agentes/pubspec.yaml
 
