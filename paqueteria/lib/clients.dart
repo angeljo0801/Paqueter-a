@@ -161,6 +161,7 @@ class _ClientsPageState extends State<ClientsPage> {
   }
 
   Future<void> load() async {
+    await WhatsBotPurchaseSyncService.syncSilently();
     final r = await Future.wait([
       Store.list('clients'),
       Store.list('purchases'),
