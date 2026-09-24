@@ -252,6 +252,101 @@ class WhatsBotPurchaseSyncService {
     } catch (_) {}
   }
 
+  static Future<int> _applyRemoteActions(String url, String key) async {
+    try {
+      final response = await http
+          .get(
+            Uri.parse(url + '/api/paqueteria/actions'),
+            headers: {'x-api-key': key},
+          )
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode != 200) return 0;
+      final decoded = jsonDecode(response.body);
+      if (decoded is! List) return 0;
+
+      final packages = await Store.list('packages');
+      final payments = await Store.list('payments');
+      var packagesChanged = false;
+      var paymentsChanged = false;
+      var applied = 0;
+
+      for (final raw in decoded) {
+        if (raw is! Map) continue;
+        final action = Map<String, dynamic>.from(raw);
+        final actionId = (action['id'] ?? '').toString();
+        final actionType = (action['action_type'] ?? '').toString();
+        final payloadRaw = action['payload'];
+        if (actionId.isEmpty || payloadRaw is! Map) continue;
+        final payload = Map<String, dynamic>.from(payloadRaw);
+        var success = false;
+
+        if (actionType == 'package_status') {
+          final tracking = (payload['tracking'] ?? '')
+              .toString()
+              .replaceAll(RegExp(r'\s+'), '')
+              .toUpperCase();
+          final status = (payload['status'] ?? '').toString().trim();
+          if (tracking.isNotEmpty && status.isNotEmpty) {
+            final index = packages.indexWhere(
+              (p) => (p['tracking'] ?? '')
+                  .toString()
+                  .replaceAll(RegExp(r'\s+'), '')
+                  .toUpperCase() == tracking,
+            );
+            if (index >= 0) {
+              packages[index]['status'] = status;
+              packages[index]['whatsbotActionId'] = actionId;
+              packages[index]['whatsbotActionAt'] =
+                  DateTime.now().toUtc().toIso8601String();
+              packagesChanged = true;
+              success = true;
+            }
+          }
+        } else if (actionType == 'payment') {
+          final clientId = (payload['clientId'] ?? '').toString();
+          final amount = number(payload['amount']);
+          final duplicate = payments.any(
+            (p) => (p['whatsbotActionId'] ?? '').toString() == actionId,
+          );
+          if (duplicate) {
+            success = true;
+          } else if (clientId.isNotEmpty && amount > 0) {
+            payments.add({
+              'id': newId(),
+              'clientId': clientId,
+              'amount': amount,
+              'date': today(),
+              'notes': 'Registrado desde WhatsBot',
+              'whatsbotActionId': actionId,
+              'whatsbotActionAt': DateTime.now().toUtc().toIso8601String(),
+              'deleted': false,
+            });
+            paymentsChanged = true;
+            success = true;
+          }
+        }
+
+        if (success) {
+          try {
+            final ack = await http
+                .post(
+                  Uri.parse(url + '/api/paqueteria/actions/' + actionId + '/complete'),
+                  headers: {'x-api-key': key},
+                )
+                .timeout(const Duration(seconds: 10));
+            if (ack.statusCode == 200) applied++;
+          } catch (_) {}
+        }
+      }
+
+      if (packagesChanged) await Store.saveList('packages', packages);
+      if (paymentsChanged) await Store.saveList('payments', payments);
+      return applied;
+    } catch (_) {
+      return 0;
+    }
+  }
+
   static Future<int> syncSilently() async {
     try {
       return await sync();
@@ -515,6 +610,7 @@ class WhatsBotPurchaseSyncService {
 
     final pushedClients = await _pushClients(url, key, clients);
     final pushedPurchases = await _pushPurchases(url, key, purchases, clients);
+    final appliedActions = await _applyRemoteActions(url, key);
     await _uploadSnapshot(url, key);
 
     final prefs = await SharedPreferences.getInstance();
@@ -526,6 +622,6 @@ class WhatsBotPurchaseSyncService {
       'whatsbot_combo_last_sync',
       DateTime.now().toIso8601String(),
     );
-    return imported + importedClients + pushedClients + pushedPurchases;
+    return imported + importedClients + pushedClients + pushedPurchases + appliedActions;
   }
 }
