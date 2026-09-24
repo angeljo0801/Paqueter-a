@@ -74,13 +74,7 @@ jobs:
 
           store = Path('agentes/lib/store.dart')
           s = store.read_text()
-          replacement = """double orderStoreCost(Map<String, dynamic> e) => number(e['storeCost'] ?? e['storeTotal']);
-bool orderIsUnassigned(Map<String, dynamic> e) => e['unassigned'] == true || '${e['clientId'] ?? ''}'.trim().isEmpty;
-double orderSavedClientTotal(Map<String, dynamic> e) => number(e['clientTotal']);
-double orderClientTotal(Map<String, dynamic> e) => orderIsUnassigned(e) ? 0.0 : orderSavedClientTotal(e);
-double orderAgentMargin(Map<String, dynamic> e) => orderIsUnassigned(e) ? 0.0 : orderSavedClientTotal(e) - orderStoreCost(e);
-
-double packageWeight"""
+          replacement = "double orderStoreCost(Map<String, dynamic> e) => number(e['storeCost'] ?? e['storeTotal']);\\nbool orderIsUnassigned(Map<String, dynamic> e) => e['unassigned'] == true || '${e['clientId'] ?? ''}'.trim().isEmpty;\\ndouble orderSavedClientTotal(Map<String, dynamic> e) => number(e['clientTotal']);\\ndouble orderClientTotal(Map<String, dynamic> e) => orderIsUnassigned(e) ? 0.0 : orderSavedClientTotal(e);\\ndouble orderAgentMargin(Map<String, dynamic> e) => orderIsUnassigned(e) ? 0.0 : orderSavedClientTotal(e) - orderStoreCost(e);\\n\\ndouble packageWeight"
           s, count = re.subn(r"double orderStoreCost[\s\S]*?double packageWeight", replacement, s, count=1)
           if count != 1:
               raise SystemExit('No se pudo actualizar la lógica de pedidos sin cliente')
@@ -94,7 +88,7 @@ double packageWeight"""
           s=p.read_text()
           s=s.replace('name: paqueteria_agentes','name: agente_polilla')
           s=s.replace('description: App auxiliar para agentes de Alas Cargo','description: Agente Polilla - duplicado independiente de Alas Cargo Agentes')
-          s=re.sub(r'^version:\\s*.*
+          s=re.sub(r'^version:\\s*.*$', 'version: 1.0.1+2', s, flags=re.M)
           s=s.replace("adaptive_icon_background: '#0B65D8'", "adaptive_icon_background: '#101225'")
           p.write_text(s)
 
