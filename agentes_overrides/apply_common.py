@@ -7,7 +7,8 @@ root = Path(sys.argv[1] if len(sys.argv) > 1 else "agentes")
 overrides = Path("agentes_overrides")
 
 shutil.copy2(overrides / "clients.dart", root / "lib" / "clients.dart")
-shutil.copy2(overrides / "orders.dart", root / "lib" / "orders.dart")\nshutil.copy2(overrides / "store_ocr.dart", root / "lib" / "store_ocr.dart")
+shutil.copy2(overrides / "orders.dart", root / "lib" / "orders.dart")
+shutil.copy2(overrides / "store_ocr.dart", root / "lib" / "store_ocr.dart")
 
 main = root / "lib" / "main.dart"
 s = main.read_text()
