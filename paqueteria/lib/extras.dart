@@ -284,8 +284,8 @@ class _SettingsPageState extends State<SettingsPage> {
       if(mounted){
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content:Text(count==0
-            ? 'Sin compras nuevas de WhatsBot.'
-            : 'Se importaron $count compra(s) desde WhatsBot.')),
+            ? 'Sin datos nuevos de WhatsBot.'
+            : 'Se sincronizaron $count elemento(s) desde WhatsBot.')),
         );
       }
     }catch(e){
