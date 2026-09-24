@@ -48,6 +48,210 @@ class WhatsBotPurchaseSyncService {
     await saveApiKey(key);
   }
 
+  static String _stableHash(String input) {
+    var hash = 2166136261;
+    for (final unit in utf8.encode(input)) {
+      hash ^= unit;
+      hash = (hash * 16777619) & 0x7fffffff;
+    }
+    return hash.toRadixString(16);
+  }
+
+  static Future<int> _pushClients(
+    String url,
+    String key,
+    List<Map<String, dynamic>> clients,
+  ) async {
+    var pushed = 0;
+    var changed = false;
+    for (final client in active(clients)) {
+      final id = (client['id'] ?? '').toString();
+      if (id.isEmpty) continue;
+      final external = (client['whatsbotClientSyncId'] ?? '').toString().trim();
+      final externalId = external.isEmpty ? 'paqueteria-client-' + id : external;
+      final payload = <String, dynamic>{
+        'external_id': externalId,
+        'name': (client['name'] ?? '').toString().trim(),
+        'phone': (client['phone'] ?? '').toString().trim(),
+        'source': 'paqueteria',
+      };
+      final fingerprint = _stableHash(jsonEncode(payload));
+      if ((client['whatsbotClientPushHash'] ?? '').toString() == fingerprint) {
+        continue;
+      }
+      try {
+        final response = await http
+            .post(
+              Uri.parse(url + '/api/clients'),
+              headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': key,
+              },
+              body: jsonEncode(payload),
+            )
+            .timeout(const Duration(seconds: 20));
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          try {
+            final decoded = jsonDecode(response.body);
+            if (decoded is Map && decoded['external_id'] != null) {
+              client['whatsbotClientSyncId'] = decoded['external_id'].toString();
+            } else {
+              client['whatsbotClientSyncId'] = externalId;
+            }
+          } catch (_) {
+            client['whatsbotClientSyncId'] = externalId;
+          }
+          client['whatsbotClientPushHash'] = fingerprint;
+          changed = true;
+          pushed++;
+        }
+      } catch (_) {}
+    }
+    if (changed) await Store.saveList('clients', clients);
+    return pushed;
+  }
+
+  static Future<int> _pushPurchases(
+    String url,
+    String key,
+    List<Map<String, dynamic>> purchases,
+    List<Map<String, dynamic>> clients,
+  ) async {
+    var pushed = 0;
+    var changed = false;
+    final clientsById = <String, Map<String, dynamic>>{
+      for (final c in active(clients)) (c['id'] ?? '').toString(): c,
+    };
+
+    for (final purchase in active(purchases)) {
+      final id = (purchase['id'] ?? '').toString();
+      if (id.isEmpty) continue;
+      final existingExternal = (purchase['whatsbotSyncId'] ?? '').toString().trim();
+      final externalId = existingExternal.isEmpty
+          ? 'paqueteria-purchase-' + id
+          : existingExternal;
+      final client = clientsById[(purchase['clientId'] ?? '').toString()];
+      final paths = purchasePhotoPaths(purchase);
+      final photoStamp = <String>[];
+      for (final path in paths) {
+        try {
+          final file = File(path);
+          if (await file.exists()) {
+            final stat = await file.stat();
+            photoStamp.add(path + ':' + stat.modified.millisecondsSinceEpoch.toString());
+          }
+        } catch (_) {}
+      }
+
+      final fingerprintPayload = <String, dynamic>{
+        'external_id': externalId,
+        'client': (client?['id'] ?? '').toString(),
+        'name': (client?['name'] ?? '').toString(),
+        'phone': (client?['phone'] ?? '').toString(),
+        'store': (purchase['store'] ?? '').toString(),
+        'description': (purchase['description'] ?? '').toString(),
+        'total': number(purchase['total']),
+        'status': (purchase['status'] ?? '').toString(),
+        'photos': photoStamp,
+      };
+      final fingerprint = _stableHash(jsonEncode(fingerprintPayload));
+      if ((purchase['whatsbotPurchasePushHash'] ?? '').toString() == fingerprint) {
+        continue;
+      }
+
+      final photos = <Map<String, String>>[];
+      for (final path in paths) {
+        try {
+          final file = File(path);
+          if (!await file.exists()) continue;
+          final bytes = await file.readAsBytes();
+          if (bytes.length > 8 * 1024 * 1024) continue;
+          photos.add({
+            'name': file.uri.pathSegments.isEmpty
+                ? 'purchase.jpg'
+                : file.uri.pathSegments.last,
+            'data': base64Encode(bytes),
+          });
+        } catch (_) {}
+      }
+
+      final date = (purchase['date'] ?? '').toString().trim();
+      final payload = <String, dynamic>{
+        'external_id': externalId,
+        'customer_name': (client?['name'] ?? '').toString().trim(),
+        'customer_phone': (client?['phone'] ?? '').toString().trim(),
+        'title': (purchase['store'] ?? 'Compra').toString(),
+        'description': (purchase['description'] ?? '').toString(),
+        'store': (purchase['store'] ?? 'Paquetería').toString(),
+        'total': number(purchase['total']),
+        'created_at': date.isEmpty ? DateTime.now().toUtc().toIso8601String() : date + 'T00:00:00Z',
+        'photos': photos,
+      };
+
+      try {
+        final response = await http
+            .post(
+              Uri.parse(url + '/api/purchases'),
+              headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': key,
+              },
+              body: jsonEncode(payload),
+            )
+            .timeout(const Duration(seconds: 45));
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          purchase['whatsbotSyncId'] = externalId;
+          purchase['whatsbotPurchasePushHash'] = fingerprint;
+          changed = true;
+          pushed++;
+        }
+      } catch (_) {}
+    }
+
+    if (changed) await Store.saveList('purchases', purchases);
+    return pushed;
+  }
+
+  static Future<void> _uploadSnapshot(String url, String key) async {
+    try {
+      final values = await Future.wait([
+        Store.list('clients'),
+        Store.list('recipients'),
+        Store.list('purchases'),
+        Store.list('packages'),
+        Store.list('payments'),
+        Store.list('trips'),
+        Store.list('expenses'),
+        Store.list('agencyShipments'),
+        Store.list('agents'),
+        Store.list('agentReports'),
+      ]);
+      final payload = <String, dynamic>{
+        'clients': active(values[0]),
+        'recipients': active(values[1]),
+        'purchases': active(values[2]),
+        'packages': active(values[3]),
+        'payments': active(values[4]),
+        'trips': active(values[5]),
+        'expenses': active(values[6]),
+        'agencyShipments': active(values[7]),
+        'agents': active(values[8]),
+        'agentReports': active(values[9]),
+        'updatedAt': DateTime.now().toUtc().toIso8601String(),
+      };
+      await http
+          .put(
+            Uri.parse(url + '/api/paqueteria/snapshot'),
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': key,
+            },
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 30));
+    } catch (_) {}
+  }
+
   static Future<int> syncSilently() async {
     try {
       return await sync();
@@ -309,11 +513,19 @@ class WhatsBotPurchaseSyncService {
     if (clientsChanged) await Store.saveList('clients', clients);
     if (imported > 0) await Store.saveList('purchases', purchases);
 
+    final pushedClients = await _pushClients(url, key, clients);
+    final pushedPurchases = await _pushPurchases(url, key, purchases, clients);
+    await _uploadSnapshot(url, key);
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       'whatsbot_purchase_last_sync',
       DateTime.now().toIso8601String(),
     );
-    return imported + importedClients;
+    await prefs.setString(
+      'whatsbot_combo_last_sync',
+      DateTime.now().toIso8601String(),
+    );
+    return imported + importedClients + pushedClients + pushedPurchases;
   }
 }
