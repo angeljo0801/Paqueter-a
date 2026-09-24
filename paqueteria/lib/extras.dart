@@ -219,8 +219,171 @@ class _ExpensesPageState extends State<ExpensesPage>{List<Map<String,dynamic>>ro
 class FinancePage extends StatefulWidget{const FinancePage({super.key});@override State<FinancePage> createState()=>_FinancePageState();}
 class _FinancePageState extends State<FinancePage>{List<Map<String,dynamic>>purchases=[],payments=[],expenses=[],trips=[],packages=[];@override void initState(){super.initState();load();}Future<void>load()async{final r=await Future.wait([Store.list('purchases'),Store.list('payments'),Store.list('expenses'),Store.list('trips'),Store.list('packages')]);if(!mounted)return;setState((){purchases=active(r[0]);payments=active(r[1]);expenses=active(r[2]);trips=active(r[3]);packages=active(r[4]);});}@override Widget build(BuildContext context){final purchaseRevenue=purchases.fold<double>(0,(a,e)=>a+(number(e['clientTotal'])-number(e['total'])));final paid=payments.fold<double>(0,(a,e)=>a+number(e['amount']));final general=expenses.fold<double>(0,(a,e)=>a+number(e['amount']));double tripProfit=0;for(final t in trips){final ids=dynList(t['packageIds']).map((e)=>'$e').toSet();final w=packages.where((p)=>ids.contains('${p['id']}')).fold<double>(0,(a,e)=>a+number(e['billWeight']));tripProfit+=w*number(t['ratePerLb'])-tripExpenses(t);}return Scaffold(appBar:AppBar(title:const Text('Finanzas')),body:RefreshIndicator(onRefresh:load,child:ListView(padding:const EdgeInsets.all(12),children:[_sectionCard(context,'Resumen',Icons.analytics,[Text('Pagos registrados: ${money(paid)}'),Text('Ganancia por comisión de compras: ${money(purchaseRevenue)}'),Text('Resultado estimado de viajes: ${money(tripProfit)}'),Text('Gastos generales: ${money(general)}'),const Divider(),Text('Resultado estimado: ${money(tripProfit+purchaseRevenue-general)}',style:const TextStyle(fontWeight:FontWeight.bold))])])));}}
 
-class SettingsPage extends StatefulWidget{const SettingsPage({super.key});@override State<SettingsPage> createState()=>_SettingsPageState();}
-class _SettingsPageState extends State<SettingsPage>{final rate=TextEditingController(),commission=TextEditingController();String weightRule='manual';bool loaded=false;@override void initState(){super.initState();load();}Future<void>load()async{final s=await Store.settings();rate.text='${s['ratePerLb']}';commission.text='${s['purchaseCommissionPct']}';weightRule='${s['weightRule']}';if(mounted)setState(()=>loaded=true);}Future<void>save()async{final s=await Store.settings();s['ratePerLb']=number(rate.text);s['purchaseCommissionPct']=number(commission.text);s['weightRule']=weightRule;await Store.saveSettings(s);if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Configuración guardada. Los registros antiguos conservan sus valores propios.')));}@override Widget build(BuildContext context){if(!loaded)return const Scaffold(body:Center(child:CircularProgressIndicator()));return Scaffold(appBar:AppBar(title:const Text('Configuración del negocio')),body:ListView(padding:const EdgeInsets.all(16),children:[TextField(controller:rate,keyboardType:const TextInputType.numberWithOptions(decimal:true),decoration:const InputDecoration(labelText:'Tarifa general por libra')),const SizedBox(height:12),TextField(controller:commission,keyboardType:const TextInputType.numberWithOptions(decimal:true),decoration:const InputDecoration(labelText:'Comisión predeterminada de compras %')),const SizedBox(height:12),_drop('Peso facturable predeterminado',weightRule,const [DropdownMenuItem(value:'manual',child:Text('Elegir manualmente')),DropdownMenuItem(value:'usa',child:Text('Peso EE. UU.')),DropdownMenuItem(value:'cuba',child:Text('Peso Cuba')),DropdownMenuItem(value:'max',child:Text('El mayor de los dos'))],(v)=>setState(()=>weightRule=v??weightRule)),const SizedBox(height:18),FilledButton.icon(onPressed:save,icon:const Icon(Icons.save),label:const Text('Guardar configuración'))]));}}
+class SettingsPage extends StatefulWidget {
+  const SettingsPage({super.key});
+  @override
+  State<SettingsPage> createState()=>_SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  final rate=TextEditingController();
+  final commission=TextEditingController();
+  final whatsBotUrl=TextEditingController();
+  final whatsBotKey=TextEditingController();
+  String weightRule='manual';
+  bool whatsBotSyncEnabled=true;
+  bool loaded=false;
+  bool syncing=false;
+
+  @override
+  void initState(){super.initState();load();}
+
+  @override
+  void dispose(){
+    rate.dispose();
+    commission.dispose();
+    whatsBotUrl.dispose();
+    whatsBotKey.dispose();
+    super.dispose();
+  }
+
+  Future<void>load()async{
+    final settings=await Store.settings();
+    rate.text='${settings['ratePerLb']}';
+    commission.text='${settings['purchaseCommissionPct']}';
+    weightRule='${settings['weightRule']}';
+    whatsBotSyncEnabled=settings['whatsBotSyncEnabled']!=false;
+    whatsBotUrl.text='${settings['whatsBotBackendUrl']??'https://wasbot-backend-production.up.railway.app'}';
+    whatsBotKey.text=await WhatsBotPurchaseSyncService.apiKey();
+    if(mounted)setState(()=>loaded=true);
+  }
+
+  Future<void>save()async{
+    final settings=await Store.settings();
+    settings['ratePerLb']=number(rate.text);
+    settings['purchaseCommissionPct']=number(commission.text);
+    settings['weightRule']=weightRule;
+    await Store.saveSettings(settings);
+    await WhatsBotPurchaseSyncService.configure(
+      enabled:whatsBotSyncEnabled,
+      url:whatsBotUrl.text,
+      key:whatsBotKey.text,
+    );
+    if(mounted){
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content:Text('Configuración guardada.')),
+      );
+    }
+  }
+
+  Future<void>syncNow()async{
+    setState(()=>syncing=true);
+    try{
+      await save();
+      final count=await WhatsBotPurchaseSyncService.sync();
+      if(mounted){
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content:Text(count==0
+            ? 'Sin compras nuevas de WhatsBot.'
+            : 'Se importaron $count compra(s) desde WhatsBot.')),
+        );
+      }
+    }catch(e){
+      if(mounted){
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content:Text('No se pudo sincronizar WhatsBot: $e')),
+        );
+      }
+    }finally{
+      if(mounted)setState(()=>syncing=false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context){
+    if(!loaded)return const Scaffold(body:Center(child:CircularProgressIndicator()));
+    return Scaffold(
+      appBar:AppBar(title:const Text('Configuración del negocio')),
+      body:ListView(
+        padding:const EdgeInsets.all(16),
+        children:[
+          TextField(
+            controller:rate,
+            keyboardType:const TextInputType.numberWithOptions(decimal:true),
+            decoration:const InputDecoration(labelText:'Tarifa general por libra'),
+          ),
+          const SizedBox(height:12),
+          TextField(
+            controller:commission,
+            keyboardType:const TextInputType.numberWithOptions(decimal:true),
+            decoration:const InputDecoration(labelText:'Comisión predeterminada de compras %'),
+          ),
+          const SizedBox(height:12),
+          _drop(
+            'Peso facturable predeterminado',
+            weightRule,
+            const [
+              DropdownMenuItem(value:'manual',child:Text('Elegir manualmente')),
+              DropdownMenuItem(value:'usa',child:Text('Peso EE. UU.')),
+              DropdownMenuItem(value:'cuba',child:Text('Peso Cuba')),
+              DropdownMenuItem(value:'max',child:Text('El mayor de los dos')),
+            ],
+            (v)=>setState(()=>weightRule=v??weightRule),
+          ),
+          const SizedBox(height:24),
+          Text(
+            'Sincronización con WhatsBot',
+            style:Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight:FontWeight.bold),
+          ),
+          const SizedBox(height:8),
+          SwitchListTile(
+            contentPadding:EdgeInsets.zero,
+            title:const Text('Importar compras automáticamente'),
+            subtitle:const Text(
+              'WhatsBot envía nombre, número, detalles y fotos; Paquetería crea o reutiliza el cliente y registra la compra.',
+            ),
+            value:whatsBotSyncEnabled,
+            onChanged:(v)=>setState(()=>whatsBotSyncEnabled=v),
+          ),
+          const SizedBox(height:8),
+          TextField(
+            controller:whatsBotUrl,
+            keyboardType:TextInputType.url,
+            decoration:const InputDecoration(
+              labelText:'Servidor de WhatsBot',
+              hintText:'https://wasbot-backend-production.up.railway.app',
+            ),
+          ),
+          const SizedBox(height:12),
+          TextField(
+            controller:whatsBotKey,
+            obscureText:true,
+            enableSuggestions:false,
+            autocorrect:false,
+            decoration:const InputDecoration(
+              labelText:'APP_API_KEY de WhatsBot',
+              helperText:'Usa la misma APP_API_KEY que configuraste en Railway.',
+            ),
+          ),
+          const SizedBox(height:12),
+          OutlinedButton.icon(
+            onPressed:syncing?null:syncNow,
+            icon:syncing
+              ? const SizedBox.square(dimension:18,child:CircularProgressIndicator(strokeWidth:2))
+              : const Icon(Icons.sync),
+            label:Text(syncing?'Sincronizando…':'Sincronizar WhatsBot ahora'),
+          ),
+          const SizedBox(height:18),
+          FilledButton.icon(
+            onPressed:save,
+            icon:const Icon(Icons.save),
+            label:const Text('Guardar configuración'),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class TrashPage extends StatefulWidget{const TrashPage({super.key});@override State<TrashPage> createState()=>_TrashPageState();}
 class _TrashPageState extends State<TrashPage>{final keys={'clients':'Clientes','recipients':'Destinatarios','purchases':'Compras','packages':'Paquetes','trips':'Viajes','payments':'Pagos','expenses':'Gastos','flightWatches':'Alertas de vuelos'};List<Map<String,dynamic>>deleted=[];@override void initState(){super.initState();load();}Future<void>load()async{final out=<Map<String,dynamic>>[];for(final entry in keys.entries){final rows=await Store.list(entry.key);for(final r in rows.where((e)=>e['deleted']==true)){out.add({...r,'_key':entry.key,'_type':entry.value});}}if(mounted)setState(()=>deleted=out);}String label(Map<String,dynamic>e)=>'${e['name']??e['tracking']??e['store']??e['origin']??e['amount']??e['id']}';Future<void>restore(Map<String,dynamic>e)async{final key='${e['_key']}';final rows=await Store.list(key);final i=rows.indexWhere((x)=>x['id']==e['id']);if(i>=0){rows[i]['deleted']=false;rows[i].remove('deletedAt');await Store.saveList(key,rows);}load();}Future<void>permanent(Map<String,dynamic>e)async{final key='${e['_key']}';final rows=await Store.list(key);rows.removeWhere((x)=>x['id']==e['id']);await Store.saveList(key,rows);load();}@override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:const Text('Papelera')),body:deleted.isEmpty?const Center(child:Text('Papelera vacía.')):ListView.builder(itemCount:deleted.length,itemBuilder:(_,i){final e=deleted[i];return ListTile(title:Text(label(e)),subtitle:Text('${e['_type']}'),trailing:PopupMenuButton<String>(onSelected:(v){if(v=='restore')restore(e);else permanent(e);},itemBuilder:(_)=>const [PopupMenuItem(value:'restore',child:Text('Restaurar')),PopupMenuItem(value:'delete',child:Text('Eliminar definitivamente'))]));}));}
