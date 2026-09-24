@@ -62,6 +62,25 @@ class WhatsBotPurchaseSyncService {
     if (key.isEmpty) return 0;
     final url = await backendUrl();
 
+    List<Map<String, dynamic>> remoteClients = [];
+    try {
+      final clientResponse = await http
+          .get(
+            Uri.parse('$url/api/clients'),
+            headers: {'x-api-key': key},
+          )
+          .timeout(const Duration(seconds: 15));
+      if (clientResponse.statusCode == 200) {
+        final clientDecoded = jsonDecode(clientResponse.body);
+        if (clientDecoded is List) {
+          remoteClients = clientDecoded
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
+        }
+      }
+    } catch (_) {}
+
     final response = await http
         .get(
           Uri.parse('$url/api/purchases'),
@@ -84,7 +103,75 @@ class WhatsBotPurchaseSyncService {
     final settings = await Store.settings();
     final commission = number(settings['purchaseCommissionPct']);
     var imported = 0;
+    var importedClients = 0;
     var clientsChanged = false;
+
+    for (final item in remoteClients.reversed) {
+      final externalId = '${item['external_id'] ?? item['id'] ?? ''}'.trim();
+      if (externalId.isEmpty) continue;
+
+      final name = '${item['name'] ?? ''}'.trim();
+      final phone = '${item['phone'] ?? ''}'.trim();
+      final normalized = normalizePhone(phone);
+
+      Map<String, dynamic>? client;
+      for (final c in active(clients)) {
+        if ('${c['whatsbotClientSyncId'] ?? ''}' == externalId) {
+          client = c;
+          break;
+        }
+      }
+      if (client == null && normalized.isNotEmpty) {
+        for (final c in active(clients)) {
+          if (normalizePhone(c['phone']) == normalized) {
+            client = c;
+            break;
+          }
+        }
+      }
+      if (client == null && name.isNotEmpty) {
+        final target = name.toLowerCase();
+        for (final c in active(clients)) {
+          if ('${c['name'] ?? ''}'.trim().toLowerCase() == target) {
+            client = c;
+            break;
+          }
+        }
+      }
+
+      if (client == null) {
+        clients.add({
+          'id': newId(),
+          'name': name.isEmpty ? 'Cliente WhatsApp' : name,
+          'phone': phone,
+          'email': '',
+          'notes': 'Creado desde un contacto aprobado en WhatsBot',
+          'whatsbotClientSyncId': externalId,
+          'source': 'whatsbot',
+          'deleted': false,
+        });
+        clientsChanged = true;
+        importedClients++;
+      } else {
+        var changed = false;
+        if ('${client['whatsbotClientSyncId'] ?? ''}' != externalId) {
+          client['whatsbotClientSyncId'] = externalId;
+          changed = true;
+        }
+        if (name.isNotEmpty && '${client['name'] ?? ''}'.trim().isEmpty) {
+          client['name'] = name;
+          changed = true;
+        }
+        if (phone.isNotEmpty && '${client['phone'] ?? ''}'.trim().isEmpty) {
+          client['phone'] = phone;
+          changed = true;
+        }
+        if (changed) {
+          clientsChanged = true;
+          importedClients++;
+        }
+      }
+    }
 
     for (final item in remote.reversed) {
       final externalId = '${item['external_id'] ?? item['id'] ?? ''}'.trim();
@@ -227,6 +314,6 @@ class WhatsBotPurchaseSyncService {
       'whatsbot_purchase_last_sync',
       DateTime.now().toIso8601String(),
     );
-    return imported;
+    return imported + importedClients;
   }
 }
