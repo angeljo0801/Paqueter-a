@@ -24,6 +24,7 @@ part 'flights.dart';
 part 'extras.dart';
 part 'tracking_service.dart';
 part 'agents.dart';
+part 'whatsbot_sync.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,6 +32,7 @@ Future<void> main() async {
   try {
     await PaqueteriaBackupService.autoBackupIfDue();
   } catch (_) {}
+  await WhatsBotPurchaseSyncService.syncSilently();
 }
 
 class PaqueteriaApp extends StatelessWidget {
@@ -73,7 +75,7 @@ class Store {
     final p = await SharedPreferences.getInstance();
     final raw = p.getString('settings');
     if (raw == null) {
-      return {'ratePerLb': 5.0, 'purchaseCommissionPct': 0.0, 'weightRule': 'manual', 'trashDays': 30};
+      return {'ratePerLb': 5.0, 'purchaseCommissionPct': 0.0, 'weightRule': 'manual', 'trashDays': 30, 'whatsBotSyncEnabled': true, 'whatsBotBackendUrl': 'https://wasbot-backend-production.up.railway.app'};
     }
     try {
       final m = Map<String, dynamic>.from(jsonDecode(raw) as Map);
@@ -81,9 +83,11 @@ class Store {
       m.putIfAbsent('purchaseCommissionPct', () => 0.0);
       m.putIfAbsent('weightRule', () => 'manual');
       m.putIfAbsent('trashDays', () => 30);
+      m.putIfAbsent('whatsBotSyncEnabled', () => true);
+      m.putIfAbsent('whatsBotBackendUrl', () => 'https://wasbot-backend-production.up.railway.app');
       return m;
     } catch (_) {
-      return {'ratePerLb': 5.0, 'purchaseCommissionPct': 0.0, 'weightRule': 'manual', 'trashDays': 30};
+      return {'ratePerLb': 5.0, 'purchaseCommissionPct': 0.0, 'weightRule': 'manual', 'trashDays': 30, 'whatsBotSyncEnabled': true, 'whatsBotBackendUrl': 'https://wasbot-backend-production.up.railway.app'};
     }
   }
 
