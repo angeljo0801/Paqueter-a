@@ -32,6 +32,7 @@ class _PurchasesPageState extends State<PurchasesPage> {
   @override
   void initState() { super.initState(); load(); }
   Future<void> load() async {
+    await WhatsBotPurchaseSyncService.syncSilently();
     final r = await Future.wait([Store.list('purchases'), Store.list('clients')]);
     if (!mounted) return;
     setState(() { rows = active(r[0]); clients = active(r[1]); });
