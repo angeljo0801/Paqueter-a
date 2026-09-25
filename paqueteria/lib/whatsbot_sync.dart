@@ -609,10 +609,16 @@ class WhatsBotPurchaseSyncService {
     for (final item in remote.reversed) {
       final externalId = '${item['external_id'] ?? item['id'] ?? ''}'.trim();
       if (externalId.isEmpty) continue;
-      final already = purchases.any(
+      final existingPurchaseIndex = purchases.indexWhere(
         (p) => '${p['whatsbotSyncId'] ?? ''}' == externalId,
       );
-      if (already) continue;
+      final remoteUpdatedAt = '${item['updated_at'] ?? ''}'.trim();
+      if (existingPurchaseIndex >= 0 &&
+          remoteUpdatedAt.isNotEmpty &&
+          '${purchases[existingPurchaseIndex]['whatsbotRemoteUpdatedAt'] ?? ''}' ==
+              remoteUpdatedAt) {
+        continue;
+      }
 
       final name = '${item['customer_name'] ?? ''}'.trim();
       final phone = '${item['customer_phone'] ?? ''}'.trim();
@@ -692,7 +698,11 @@ class WhatsBotPurchaseSyncService {
       }
 
       final total = number(item['total']);
-      final clientTotal = unassigned ? 0.0 : total * (1 + commission / 100);
+      final effectiveCommission = existingPurchaseIndex >= 0
+          ? number(purchases[existingPurchaseIndex]['commissionPct'])
+          : commission;
+      final clientTotal =
+          unassigned ? 0.0 : total * (1 + effectiveCommission / 100);
       final clientId = client == null ? '' : '${client['id']}';
 
       final remoteItems = <Map<String, dynamic>>[];
@@ -725,7 +735,7 @@ class WhatsBotPurchaseSyncService {
       final title = '${item['title'] ?? ''}'.trim();
       final description = '${item['description'] ?? ''}'.trim();
 
-      purchases.add({
+      final incomingPurchase = <String, dynamic>{
         'id': newId(),
         'clientId': clientId,
         'type': 'Online',
@@ -734,14 +744,27 @@ class WhatsBotPurchaseSyncService {
             : '${item['store']}',
         'description': description.isEmpty ? title : description,
         'total': total,
-        'commissionPct': commission,
+        'commissionPct': effectiveCommission,
         'clientTotal': clientTotal,
         'orderNumber': '${item['order_number'] ?? ''}'.trim(),
         'date': dateText,
-        'status': 'Comprado',
-        'receiptPath': photos.isEmpty ? '' : photos.first,
-        'photoPath': photos.isEmpty ? '' : photos.first,
-        'photoPaths': photos,
+        'status': existingPurchaseIndex >= 0
+            ? ('${purchases[existingPurchaseIndex]['status'] ?? 'Comprado'}')
+            : 'Comprado',
+        'receiptPath': photos.isEmpty
+            ? (existingPurchaseIndex >= 0
+                ? '${purchases[existingPurchaseIndex]['receiptPath'] ?? ''}'
+                : '')
+            : photos.first,
+        'photoPath': photos.isEmpty
+            ? (existingPurchaseIndex >= 0
+                ? '${purchases[existingPurchaseIndex]['photoPath'] ?? ''}'
+                : '')
+            : photos.first,
+        'photoPaths': photos.isEmpty && existingPurchaseIndex >= 0
+            ? ((purchases[existingPurchaseIndex]['photoPaths'] as List?) ??
+                const <dynamic>[])
+            : photos,
         'ocrText': '${item['ocr_text'] ?? ''}',
         'ocrMeta': remoteOcrMeta,
         'items': remoteItems,
@@ -752,7 +775,7 @@ class WhatsBotPurchaseSyncService {
                   'clientId': clientId,
                   'subtotal': total,
                   'extras': 0.0,
-                  'commissionPct': commission,
+                  'commissionPct': effectiveCommission,
                   'total': clientTotal,
                   'itemIds': remoteItems
                       .map((e) => '${e['id'] ?? ''}')
@@ -763,9 +786,19 @@ class WhatsBotPurchaseSyncService {
         'unassigned': unassigned,
         'whatsbotSyncId': externalId,
         'whatsbotRemoteId': item['id'],
+        'whatsbotRemoteUpdatedAt': remoteUpdatedAt,
         'source': 'whatsbot',
         'deleted': false,
-      });
+      };
+      if (existingPurchaseIndex >= 0) {
+        incomingPurchase['id'] = purchases[existingPurchaseIndex]['id'];
+        purchases[existingPurchaseIndex] = {
+          ...purchases[existingPurchaseIndex],
+          ...incomingPurchase,
+        };
+      } else {
+        purchases.add(incomingPurchase);
+      }
       imported++;
     }
 
