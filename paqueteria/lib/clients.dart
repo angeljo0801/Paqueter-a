@@ -720,6 +720,124 @@ class _ClientDetailPageState extends State<ClientDetailPage> {
 
   Future<void> addPayment() => editPayment();
 
+
+  Future<void> openPhotoGallery(List<String> rawPaths) async {
+    final paths =
+        rawPaths.where((path) => path.isNotEmpty && File(path).existsSync()).toList();
+    if (paths.isEmpty) return;
+    var index = 0;
+    await showDialog<void>(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (context, setD) => Dialog(
+          insetPadding: const EdgeInsets.all(12),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 620),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: InteractiveViewer(
+                    minScale: 0.7,
+                    maxScale: 5,
+                    child: Image.file(File(paths[index]), fit: BoxFit.contain),
+                  ),
+                ),
+                if (paths.length > 1)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        onPressed: index == 0
+                            ? null
+                            : () => setD(() => index--),
+                        icon: const Icon(Icons.chevron_left),
+                      ),
+                      Text('${index + 1} / ${paths.length}'),
+                      IconButton(
+                        onPressed: index >= paths.length - 1
+                            ? null
+                            : () => setD(() => index++),
+                        icon: const Icon(Icons.chevron_right),
+                      ),
+                    ],
+                  ),
+                TextButton.icon(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
+                  label: const Text('Cerrar'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget? photoThumb(List<String> rawPaths) {
+    final paths =
+        rawPaths.where((path) => path.isNotEmpty && File(path).existsSync()).toList();
+    if (paths.isEmpty) return null;
+    return InkWell(
+      onTap: () => openPhotoGallery(paths),
+      borderRadius: BorderRadius.circular(9),
+      child: SizedBox(
+        width: 58,
+        height: 58,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(9),
+              child: Image.file(File(paths.first), fit: BoxFit.cover),
+            ),
+            if (paths.length > 1)
+              Positioned(
+                right: 3,
+                bottom: 3,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.68),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '+${paths.length - 1}',
+                    style: const TextStyle(color: Colors.white, fontSize: 11),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> createPurchase({required bool asOrder}) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PurchaseEditPage(
+          initialClientId: widget.clientId,
+          initialStatus: asOrder ? 'Pendiente de comprar' : 'Comprado',
+        ),
+      ),
+    );
+    await load();
+  }
+
+  Future<void> createPackage() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PackageEditPage(initialClientId: widget.clientId),
+      ),
+    );
+    await load();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (client == null) {
@@ -835,6 +953,7 @@ class _ClientDetailPageState extends State<ClientDetailPage> {
               for (final p in purchases)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
+                  leading: photoThumb(purchasePhotoPaths(p)),
                   title: Text(
                     '${p['store']} · ${money(purchaseAmountForClient(p, widget.clientId))}',
                   ),
@@ -885,6 +1004,25 @@ class _ClientDetailPageState extends State<ClientDetailPage> {
                     ],
                   ),
                 ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    TextButton.icon(
+                      onPressed: () => createPurchase(asOrder: false),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Nueva compra'),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => createPurchase(asOrder: true),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Nuevo pedido'),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 10),
@@ -898,6 +1036,7 @@ class _ClientDetailPageState extends State<ClientDetailPage> {
               for (final p in packages)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
+                  leading: photoThumb(packagePhotoPaths(p)),
                   title: Text('${p['tracking']}'),
                   subtitle: Text(
                     '${p['carrier']} · ${p['status']} · ${number(p['billWeight']).toStringAsFixed(1)} lb',
@@ -925,6 +1064,14 @@ class _ClientDetailPageState extends State<ClientDetailPage> {
                     },
                   ),
                 ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: createPackage,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Nuevo paquete'),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 10),
