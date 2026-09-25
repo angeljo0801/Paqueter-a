@@ -129,8 +129,9 @@ class OcrLearningService {
       expectedItemCount: parsed.expectedItemCount,
       items: items,
       warnings: parsed.warnings,
-      confidence:
-          (parsed.confidence + (applied > 0 ? 0.03 : 0.0)).clamp(0.0, 1.0),
+      confidence: (parsed.confidence + (applied > 0 ? 0.03 : 0.0))
+          .clamp(0.0, 1.0)
+          .toDouble(),
     );
     return OcrLearningApplication(adjusted, applied);
   }
