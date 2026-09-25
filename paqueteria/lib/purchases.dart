@@ -237,7 +237,6 @@ class _PurchasesPageState extends State<PurchasesPage> {
                           load();
                         },
                         trailing: Wrap(
-                          mainAxisSize: MainAxisSize.min,
                           children: [
                             if (isUnassigned(p))
                               IconButton(
