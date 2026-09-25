@@ -609,10 +609,16 @@ class WhatsBotPurchaseSyncService {
     for (final item in remote.reversed) {
       final externalId = '${item['external_id'] ?? item['id'] ?? ''}'.trim();
       if (externalId.isEmpty) continue;
-      final already = purchases.any(
+      final existingPurchaseIndex = purchases.indexWhere(
         (p) => '${p['whatsbotSyncId'] ?? ''}' == externalId,
       );
-      if (already) continue;
+      final remoteUpdatedAt = '${item['updated_at'] ?? ''}'.trim();
+      if (existingPurchaseIndex >= 0 &&
+          remoteUpdatedAt.isNotEmpty &&
+          '${purchases[existingPurchaseIndex]['whatsbotRemoteUpdatedAt'] ?? ''}' ==
+              remoteUpdatedAt) {
+        continue;
+      }
 
       final name = '${item['customer_name'] ?? ''}'.trim();
       final phone = '${item['customer_phone'] ?? ''}'.trim();
@@ -725,7 +731,7 @@ class WhatsBotPurchaseSyncService {
       final title = '${item['title'] ?? ''}'.trim();
       final description = '${item['description'] ?? ''}'.trim();
 
-      purchases.add({
+      final incomingPurchase = <String, dynamic>{
         'id': newId(),
         'clientId': clientId,
         'type': 'Online',
@@ -738,7 +744,9 @@ class WhatsBotPurchaseSyncService {
         'clientTotal': clientTotal,
         'orderNumber': '${item['order_number'] ?? ''}'.trim(),
         'date': dateText,
-        'status': 'Comprado',
+        'status': existingPurchaseIndex >= 0
+            ? ('${purchases[existingPurchaseIndex]['status'] ?? 'Comprado'}')
+            : 'Comprado',
         'receiptPath': photos.isEmpty ? '' : photos.first,
         'photoPath': photos.isEmpty ? '' : photos.first,
         'photoPaths': photos,
@@ -763,9 +771,24 @@ class WhatsBotPurchaseSyncService {
         'unassigned': unassigned,
         'whatsbotSyncId': externalId,
         'whatsbotRemoteId': item['id'],
+        'whatsbotRemoteUpdatedAt': remoteUpdatedAt,
         'source': 'whatsbot',
         'deleted': false,
-      });
+      };
+      if (existingPurchaseIndex >= 0) {
+        incomingPurchase['id'] = purchases[existingPurchaseIndex]['id'];
+        incomingPurchase['commissionPct'] =
+            number(purchases[existingPurchaseIndex]['commissionPct']);
+        final existingCommission = number(incomingPurchase['commissionPct']);
+        incomingPurchase['clientTotal'] =
+            unassigned ? 0.0 : total * (1 + existingCommission / 100);
+        purchases[existingPurchaseIndex] = {
+          ...purchases[existingPurchaseIndex],
+          ...incomingPurchase,
+        };
+      } else {
+        purchases.add(incomingPurchase);
+      }
       imported++;
     }
 
