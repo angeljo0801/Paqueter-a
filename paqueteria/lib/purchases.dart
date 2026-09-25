@@ -29,8 +29,12 @@ class PurchasesPage extends StatefulWidget {
 
 class _PurchasesPageState extends State<PurchasesPage> {
   List<Map<String, dynamic>> rows = [], clients = [];
+  final search = TextEditingController();
+  String q = '';
   @override
   void initState() { super.initState(); load(); }
+  @override
+  void dispose() { search.dispose(); super.dispose(); }
   Future<void> load() async {
     await WhatsBotPurchaseSyncService.syncSilently();
     final r = await Future.wait([Store.list('purchases'), Store.list('clients')]);
@@ -134,82 +138,155 @@ class _PurchasesPageState extends State<PurchasesPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Pedidos y compras')),
-        body: rows.isEmpty
-            ? const Center(child: Text('No hay compras registradas.'))
-            : ListView.builder(
-                itemCount: rows.length,
-                itemBuilder: (_, i) {
-                  final p = rows[i];
-                  return ListTile(
-                    leading: Builder(builder: (_) {
-                      final path = purchasePhotoPath(p);
-                      if (path.isNotEmpty && File(path).existsSync()) {
-                        return ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.file(File(path), width: 52, height: 52, fit: BoxFit.cover),
-                        );
-                      }
-                      return SizedBox(
-                        width: 52,
-                        height: 52,
-                        child: Icon(p['type'] == 'En tienda' ? Icons.store : Icons.shopping_cart),
-                      );
-                    }),
-                    title: Text(
-                      '${p['store']} · ${money(isUnassigned(p) ? number(p['total']) : number(p['clientTotal']))}',
-                    ),
-                    subtitle: Text(
-                      isUnassigned(p)
-                          ? 'Sin cliente · Toca el icono de persona para asociarlo\n${p['status']} · ${p['description']}'
-                          : '${buyers(p)} · ${p['status']}\n${p['description']}',
-                    ),
-                    isThreeLine: true,
-                    onTap: () async {
-                      await Navigator.push(context, MaterialPageRoute(builder: (_) => PurchaseEditPage(existing: p)));
-                      load();
-                    },
-                    trailing: Wrap(mainAxisSize: MainAxisSize.min, children: [
-                      if (isUnassigned(p))
-                        IconButton(
-                          tooltip: 'Asociar cliente',
-                          icon: const Icon(Icons.person_add_alt_1),
-                          onPressed: () => assignClient(p),
-                        )
-                      else
-                        IconButton(
-                          tooltip: 'Boletín',
-                          icon: const Icon(Icons.receipt_long),
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => BulletinPage(purchase: p),
-                            ),
-                          ),
-                        ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline),
-                        onPressed: () async {
-                          if (await confirmDelete(context, 'esta compra')) {
-                            await softDelete('purchases', '${p['id']}');
-                            load();
-                          }
+  Widget build(BuildContext context) {
+    final needle = q.trim().toLowerCase();
+    final filtered = rows.where((p) {
+      if (needle.isEmpty) return true;
+      final amount = isUnassigned(p) ? number(p['total']) : number(p['clientTotal']);
+      final text = [
+        p['store'],
+        p['orderNumber'],
+        p['status'],
+        p['description'],
+        p['type'],
+        buyers(p),
+        amount,
+        money(amount),
+      ].map((e) => '${e ?? ''}').join(' ').toLowerCase();
+      return text.contains(needle);
+    }).toList();
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Pedidos y compras')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+            child: TextField(
+              controller: search,
+              onChanged: (v) => setState(() => q = v),
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search),
+                hintText: 'Buscar cliente, tienda, estado, categoría o monto',
+                suffixIcon: q.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Limpiar búsqueda',
+                        icon: const Icon(Icons.close),
+                        onPressed: () {
+                          search.clear();
+                          setState(() => q = '');
                         },
                       ),
-                    ]),
-                  );
-                },
               ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () async {
-            await Navigator.push(context, MaterialPageRoute(builder: (_) => const PurchaseEditPage()));
-            load();
-          },
-          icon: const Icon(Icons.add),
-          label: const Text('Compra'),
-        ),
-      );
+            ),
+          ),
+          Expanded(
+            child: filtered.isEmpty
+                ? Center(
+                    child: Text(
+                      rows.isEmpty
+                          ? 'No hay compras registradas.'
+                          : 'No hay resultados para “$q”.',
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: filtered.length,
+                    itemBuilder: (_, i) {
+                      final p = filtered[i];
+                      return ListTile(
+                        leading: Builder(builder: (_) {
+                          final path = purchasePhotoPath(p);
+                          if (path.isNotEmpty && File(path).existsSync()) {
+                            return ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.file(
+                                File(path),
+                                width: 52,
+                                height: 52,
+                                fit: BoxFit.cover,
+                              ),
+                            );
+                          }
+                          return SizedBox(
+                            width: 52,
+                            height: 52,
+                            child: Icon(
+                              p['type'] == 'En tienda'
+                                  ? Icons.store
+                                  : Icons.shopping_cart,
+                            ),
+                          );
+                        }),
+                        title: Text(
+                          '${p['store']} · ${money(isUnassigned(p) ? number(p['total']) : number(p['clientTotal']))}',
+                        ),
+                        subtitle: Text(
+                          isUnassigned(p)
+                              ? 'Sin cliente · Toca el icono de persona para asociarlo\n${p['status']} · ${p['description']}'
+                              : '${buyers(p)} · ${p['status']}\n${p['description']}',
+                        ),
+                        isThreeLine: true,
+                        onTap: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => PurchaseEditPage(existing: p),
+                            ),
+                          );
+                          load();
+                        },
+                        trailing: Wrap(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (isUnassigned(p))
+                              IconButton(
+                                tooltip: 'Asociar cliente',
+                                icon: const Icon(Icons.person_add_alt_1),
+                                onPressed: () => assignClient(p),
+                              )
+                            else
+                              IconButton(
+                                tooltip: 'Boletín',
+                                icon: const Icon(Icons.receipt_long),
+                                onPressed: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => BulletinPage(purchase: p),
+                                  ),
+                                ),
+                              ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline),
+                              onPressed: () async {
+                                if (await confirmDelete(context, 'esta compra')) {
+                                  await softDelete('purchases', '${p['id']}');
+                                  load();
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const PurchaseEditPage()),
+          );
+          load();
+        },
+        icon: const Icon(Icons.add),
+        label: const Text('Compra'),
+      ),
+    );
+  }
+
 }
 
 class ReceiptResult {
@@ -291,7 +368,15 @@ Future<ReceiptResult?> pickReceipt(ImageSource source) async {
 class PurchaseEditPage extends StatefulWidget {
   final Map<String, dynamic>? existing;
   final bool startWithReceipt;
-  const PurchaseEditPage({super.key, this.existing, this.startWithReceipt = false});
+  final String? initialClientId;
+  final String? initialStatus;
+  const PurchaseEditPage({
+    super.key,
+    this.existing,
+    this.startWithReceipt = false,
+    this.initialClientId,
+    this.initialStatus,
+  });
   @override
   State<PurchaseEditPage> createState() => _PurchaseEditPageState();
 }
@@ -316,6 +401,8 @@ class _PurchaseEditPageState extends State<PurchaseEditPage> {
     final s = await Store.settings();
     commission = number(widget.existing?['commissionPct'] ?? s['purchaseCommissionPct']);
     date.text = '${widget.existing?['date'] ?? today()}';
+    clientId = widget.initialClientId;
+    status = widget.initialStatus ?? status;
     if (widget.existing != null) {
       clientId = '${widget.existing!['clientId'] ?? ''}';
       if (clientId!.isEmpty) clientId = null;
@@ -645,7 +732,7 @@ class _PurchaseEditPageState extends State<PurchaseEditPage> {
     if (!loaded) return const Scaffold(body: Center(child: CircularProgressIndicator()));
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.existing == null ? 'Nueva compra' : 'Editar compra'),
+        title: Text(widget.existing == null ? (widget.initialStatus == 'Pendiente de comprar' ? 'Nuevo pedido' : 'Nueva compra') : 'Editar compra'),
         actions: [
           if (widget.existing != null)
             IconButton(tooltip: 'Boletín', icon: const Icon(Icons.receipt_long), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => BulletinPage(purchase: widget.existing!)))),
@@ -820,7 +907,7 @@ class _PurchaseEditPageState extends State<PurchaseEditPage> {
           Text('Puedes asignar cada artículo a un cliente diferente. El impuesto/descuento restante del ticket se reparte proporcionalmente.'),
         ],
         const SizedBox(height: 18),
-        FilledButton.icon(onPressed: save, icon: const Icon(Icons.save), label: const Text('Guardar compra')),
+        FilledButton.icon(onPressed: save, icon: const Icon(Icons.save), label: Text(widget.existing == null && widget.initialStatus == 'Pendiente de comprar' ? 'Guardar pedido' : 'Guardar compra')),
         const SizedBox(height: 60),
       ]),
     );
