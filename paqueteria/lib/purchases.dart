@@ -303,6 +303,7 @@ class ReceiptResult {
   final double confidence;
   final List<String> warnings;
   final bool onlineStore;
+  final int learnedAdjustments;
 
   ReceiptResult({
     required this.text,
@@ -319,6 +320,7 @@ class ReceiptResult {
     required this.confidence,
     required this.warnings,
     required this.onlineStore,
+    required this.learnedAdjustments,
   });
 }
 
@@ -342,7 +344,9 @@ Future<ReceiptResult?> pickReceipt(ImageSource source) async {
   try {
     final recognized =
         await recognizer.processImage(InputImage.fromFilePath(target));
-    final parsed = StoreOcrParser.parse(recognized.text);
+    final baseParsed = StoreOcrParser.parse(recognized.text);
+    final learned = await OcrLearningService.apply(recognized.text, baseParsed);
+    final parsed = learned.parsed;
     return ReceiptResult(
       text: recognized.text,
       total: parsed.total,
@@ -358,6 +362,7 @@ Future<ReceiptResult?> pickReceipt(ImageSource source) async {
       confidence: parsed.confidence,
       warnings: parsed.warnings,
       onlineStore: parsed.isOnlineStore,
+      learnedAdjustments: learned.appliedRules,
     );
   } finally {
     recognizer.close();
@@ -532,6 +537,10 @@ class _PurchaseEditPageState extends State<PurchaseEditPage> {
           .toList();
       ocrMeta = {
         'store': r.store,
+        'total': r.total,
+        'orderNumber': r.orderNumber,
+        'items': r.items.map((e) => {...e}).toList(),
+        'learnedAdjustments': r.learnedAdjustments,
         'subtotal': r.subtotal,
         'tax': r.tax,
         'shipping': r.shipping,
@@ -550,11 +559,14 @@ class _PurchaseEditPageState extends State<PurchaseEditPage> {
         : '${r.items.length} artículo(s) con nombre y precio';
     final confidencePct = (r.confidence * 100).round();
     final warning = r.warnings.isEmpty ? '' : ' · ${r.warnings.first}';
+    final learnedText = r.learnedAdjustments > 0
+        ? ' · ${r.learnedAdjustments} regla(s) aprendida(s) aplicada(s)'
+        : '';
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         duration: const Duration(seconds: 6),
         content: Text(
-          'OCR ${r.store}: $countText · confianza $confidencePct%$warning. Revisa los campos antes de guardar.',
+          'OCR ${r.store}: $countText · confianza $confidencePct%$warning$learnedText. Revisa los campos antes de guardar.',
         ),
       ),
     );
@@ -671,6 +683,32 @@ class _PurchaseEditPageState extends State<PurchaseEditPage> {
             0,
             (a, e) => a + number(e['total']),
           );
+    var learnedCorrections = 0;
+    if (ocrText.trim().isNotEmpty && ocrMeta.isNotEmpty) {
+      final detectedItems = dynList(ocrMeta['items'])
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+      learnedCorrections = await OcrLearningService.learnFromCorrection(
+        rawText: ocrText,
+        detectedStore: '${ocrMeta['store'] ?? ''}',
+        detectedTotal: number(ocrMeta['total']),
+        detectedOrderNumber: '${ocrMeta['orderNumber'] ?? ''}',
+        detectedItems: detectedItems,
+        correctedStore: store.text.trim(),
+        correctedTotal: base,
+        correctedOrderNumber: order.text.trim(),
+        correctedItems: items,
+      );
+      if (learnedCorrections > 0) {
+        ocrMeta = {
+          ...ocrMeta,
+          'lastLearnedCorrections': learnedCorrections,
+          'learningUpdatedAt': DateTime.now().toIso8601String(),
+        };
+      }
+    }
+
     final rows = await Store.list('purchases');
     final item = {
       'id': widget.existing?['id'] ?? newId(),
@@ -835,7 +873,7 @@ class _PurchaseEditPageState extends State<PurchaseEditPage> {
         ),
         if (receiptPath.isNotEmpty) ...[
           const SizedBox(height: 6),
-          const Text('El OCR puede equivocarse. Revisa artículos, precios y total antes de guardar.', style: TextStyle(fontSize: 12)),
+          const Text('El OCR aprende localmente de tus correcciones. Si cambias tienda, total, número de pedido, nombres o precios detectados y guardas, usará esas correcciones para mejorar lecturas futuras similares.', style: TextStyle(fontSize: 12)),
           if (!photoPaths.contains(receiptPath) && File(receiptPath).existsSync()) ...[
             const SizedBox(height: 8),
             ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.file(File(receiptPath), height: 130, fit: BoxFit.cover)),
