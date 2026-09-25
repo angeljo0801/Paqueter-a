@@ -698,7 +698,11 @@ class WhatsBotPurchaseSyncService {
       }
 
       final total = number(item['total']);
-      final clientTotal = unassigned ? 0.0 : total * (1 + commission / 100);
+      final effectiveCommission = existingPurchaseIndex >= 0
+          ? number(purchases[existingPurchaseIndex]['commissionPct'])
+          : commission;
+      final clientTotal =
+          unassigned ? 0.0 : total * (1 + effectiveCommission / 100);
       final clientId = client == null ? '' : '${client['id']}';
 
       final remoteItems = <Map<String, dynamic>>[];
@@ -740,16 +744,27 @@ class WhatsBotPurchaseSyncService {
             : '${item['store']}',
         'description': description.isEmpty ? title : description,
         'total': total,
-        'commissionPct': commission,
+        'commissionPct': effectiveCommission,
         'clientTotal': clientTotal,
         'orderNumber': '${item['order_number'] ?? ''}'.trim(),
         'date': dateText,
         'status': existingPurchaseIndex >= 0
             ? ('${purchases[existingPurchaseIndex]['status'] ?? 'Comprado'}')
             : 'Comprado',
-        'receiptPath': photos.isEmpty ? '' : photos.first,
-        'photoPath': photos.isEmpty ? '' : photos.first,
-        'photoPaths': photos,
+        'receiptPath': photos.isEmpty
+            ? (existingPurchaseIndex >= 0
+                ? '${purchases[existingPurchaseIndex]['receiptPath'] ?? ''}'
+                : '')
+            : photos.first,
+        'photoPath': photos.isEmpty
+            ? (existingPurchaseIndex >= 0
+                ? '${purchases[existingPurchaseIndex]['photoPath'] ?? ''}'
+                : '')
+            : photos.first,
+        'photoPaths': photos.isEmpty && existingPurchaseIndex >= 0
+            ? ((purchases[existingPurchaseIndex]['photoPaths'] as List?) ??
+                const <dynamic>[])
+            : photos,
         'ocrText': '${item['ocr_text'] ?? ''}',
         'ocrMeta': remoteOcrMeta,
         'items': remoteItems,
@@ -760,7 +775,7 @@ class WhatsBotPurchaseSyncService {
                   'clientId': clientId,
                   'subtotal': total,
                   'extras': 0.0,
-                  'commissionPct': commission,
+                  'commissionPct': effectiveCommission,
                   'total': clientTotal,
                   'itemIds': remoteItems
                       .map((e) => '${e['id'] ?? ''}')
@@ -777,11 +792,6 @@ class WhatsBotPurchaseSyncService {
       };
       if (existingPurchaseIndex >= 0) {
         incomingPurchase['id'] = purchases[existingPurchaseIndex]['id'];
-        incomingPurchase['commissionPct'] =
-            number(purchases[existingPurchaseIndex]['commissionPct']);
-        final existingCommission = number(incomingPurchase['commissionPct']);
-        incomingPurchase['clientTotal'] =
-            unassigned ? 0.0 : total * (1 + existingCommission / 100);
         purchases[existingPurchaseIndex] = {
           ...purchases[existingPurchaseIndex],
           ...incomingPurchase,
