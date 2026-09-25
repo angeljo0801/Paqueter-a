@@ -18,6 +18,7 @@ import 'backup_service.dart';
 part 'clients.dart';
 part 'purchases.dart';
 part 'store_ocr.dart';
+part 'ocr_learning.dart';
 part 'packages.dart';
 part 'trips.dart';
 part 'flights.dart';
