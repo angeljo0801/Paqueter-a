@@ -32,8 +32,8 @@ class OcrLearningService {
     final upper = _normalizeText(rawText).toUpperCase();
 
     for (final sample in samples.reversed) {
-      final token = '\${sample['storeToken'] ?? ''}'.trim();
-      final corrected = '\${sample['correctedStore'] ?? ''}'.trim();
+      final token = '${sample['storeToken'] ?? ''}'.trim();
+      final corrected = '${sample['correctedStore'] ?? ''}'.trim();
       if (token.isEmpty || corrected.isEmpty) continue;
       if (upper.contains(token.toUpperCase()) &&
           corrected.toLowerCase() != store.toLowerCase()) {
@@ -51,12 +51,12 @@ class OcrLearningService {
     for (final sample in samples) {
       if (!_sampleMatchesStore(sample, store)) continue;
 
-      final totalLabel = '\${sample['totalLabel'] ?? ''}'.trim();
+      final totalLabel = '${sample['totalLabel'] ?? ''}'.trim();
       if (totalLabel.isNotEmpty) {
         totalLabels[totalLabel] = (totalLabels[totalLabel] ?? 0) + 1;
       }
 
-      final orderLabel = '\${sample['orderLabel'] ?? ''}'.trim();
+      final orderLabel = '${sample['orderLabel'] ?? ''}'.trim();
       if (orderLabel.isNotEmpty) {
         orderLabels[orderLabel] = (orderLabels[orderLabel] ?? 0) + 1;
       }
@@ -64,12 +64,12 @@ class OcrLearningService {
       for (final raw in dynList(sample['itemNameCorrections'])) {
         if (raw is! Map) continue;
         final correction = Map<String, dynamic>.from(raw);
-        final from = _normalizeItem('\${correction['from'] ?? ''}');
-        final to = '\${correction['to'] ?? ''}'.trim();
+        final from = _normalizeItem('${correction['from'] ?? ''}');
+        final to = '${correction['to'] ?? ''}'.trim();
         if (from.isNotEmpty && to.isNotEmpty) itemNames[from] = to;
       }
 
-      final preference = '\${sample['pricePreference'] ?? ''}'.trim();
+      final preference = '${sample['pricePreference'] ?? ''}'.trim();
       if (preference.isNotEmpty) {
         pricePreferences[preference] =
             (pricePreferences[preference] ?? 0) + 1;
@@ -90,11 +90,11 @@ class OcrLearningService {
     }
 
     for (final item in items) {
-      final from = _normalizeItem('\${item['name'] ?? ''}');
+      final from = _normalizeItem('${item['name'] ?? ''}');
       final replacement = itemNames[from];
       if (replacement != null &&
           replacement.isNotEmpty &&
-          replacement != '\${item['name'] ?? ''}') {
+          replacement != '${item['name'] ?? ''}') {
         item['name'] = replacement;
         applied++;
       }
@@ -108,7 +108,7 @@ class OcrLearningService {
       if (best.value >= 2 && best.value > runnerUp) {
         for (final item in items) {
           final learnedPrice =
-              _priceForItem(rawText, '\${item['name'] ?? ''}', best.key);
+              _priceForItem(rawText, '${item['name'] ?? ''}', best.key);
           if (learnedPrice > 0 &&
               (learnedPrice - number(item['price'])).abs() > 0.009) {
             item['price'] = learnedPrice;
@@ -182,18 +182,18 @@ class OcrLearningService {
     }
 
     final detectedById = <String, Map<String, dynamic>>{
-      for (final item in detectedItems) '\${item['id'] ?? ''}': item,
+      for (final item in detectedItems) '${item['id'] ?? ''}': item,
     };
     final nameCorrections = <Map<String, dynamic>>[];
     String pricePreference = '';
 
     for (final corrected in correctedItems) {
-      final id = '\${corrected['id'] ?? ''}';
+      final id = '${corrected['id'] ?? ''}';
       final detected = detectedById[id];
       if (detected == null) continue;
 
-      final oldName = '\${detected['name'] ?? ''}'.trim();
-      final newName = '\${corrected['name'] ?? ''}'.trim();
+      final oldName = '${detected['name'] ?? ''}'.trim();
+      final newName = '${corrected['name'] ?? ''}'.trim();
       if (oldName.isNotEmpty &&
           newName.isNotEmpty &&
           _normalizeItem(oldName) != _normalizeItem(newName)) {
@@ -239,8 +239,8 @@ class OcrLearningService {
   ) {
     final key = store.trim().toLowerCase();
     if (key.isEmpty) return false;
-    final detected = '\${sample['detectedStore'] ?? ''}'.trim().toLowerCase();
-    final corrected = '\${sample['correctedStore'] ?? ''}'.trim().toLowerCase();
+    final detected = '${sample['detectedStore'] ?? ''}'.trim().toLowerCase();
+    final corrected = '${sample['correctedStore'] ?? ''}'.trim().toLowerCase();
     return detected == key || corrected == key;
   }
 
@@ -278,7 +278,7 @@ class OcrLearningService {
   static List<double> _moneyValues(String line) {
     final out = <double>[];
     for (final match in _money.allMatches(line)) {
-      var raw = '\${match.group(1) ?? ''}'
+      var raw = '${match.group(1) ?? ''}'
           .replaceAll(RegExp(r'[^0-9,.\-]'), '');
       if (raw.contains(',') && !raw.contains('.')) {
         if (RegExp(r',\d{2}$').hasMatch(raw)) {
