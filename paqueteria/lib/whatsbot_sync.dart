@@ -274,8 +274,12 @@ class WhatsBotPurchaseSyncService {
 
       final packages = await Store.list('packages');
       final payments = await Store.list('payments');
+      final clients = await Store.list('clients');
+      final purchases = await Store.list('purchases');
       var packagesChanged = false;
       var paymentsChanged = false;
+      var clientsChanged = false;
+      var purchasesChanged = false;
       var applied = 0;
 
       for (final raw in decoded) {
@@ -309,6 +313,126 @@ class WhatsBotPurchaseSyncService {
               packagesChanged = true;
               success = true;
             }
+          }
+        } else if (actionType == 'create_client') {
+          final name = (payload['name'] ?? '').toString().trim();
+          final phone = (payload['phone'] ?? '').toString().trim();
+          final normalizedPhone = normalizePhone(phone);
+          Map<String, dynamic>? client;
+
+          for (final row in active(clients)) {
+            if ((row['whatsbotActionId'] ?? '').toString() == actionId) {
+              client = row;
+              break;
+            }
+          }
+          if (client == null && normalizedPhone.isNotEmpty) {
+            for (final row in active(clients)) {
+              if (normalizePhone(row['phone']) == normalizedPhone) {
+                client = row;
+                break;
+              }
+            }
+          }
+          if (client == null && name.isNotEmpty) {
+            final target = name.toLowerCase();
+            for (final row in active(clients)) {
+              if ((row['name'] ?? '').toString().trim().toLowerCase() ==
+                  target) {
+                client = row;
+                break;
+              }
+            }
+          }
+
+          if (client == null && (name.isNotEmpty || phone.isNotEmpty)) {
+            clients.add({
+              'id': newId(),
+              'name': name.isEmpty ? 'Cliente WhatsBot' : name,
+              'phone': phone,
+              'email': '',
+              'notes': 'Creado desde una acción confirmada de WhatsBot',
+              'source': 'whatsbot_action',
+              'whatsbotActionId': actionId,
+              'whatsbotActionAt':
+                  DateTime.now().toUtc().toIso8601String(),
+              'deleted': false,
+            });
+            clientsChanged = true;
+            success = true;
+          } else if (client != null) {
+            var changed = false;
+            if (name.isNotEmpty &&
+                (client['name'] ?? '').toString().trim().isEmpty) {
+              client['name'] = name;
+              changed = true;
+            }
+            if (phone.isNotEmpty &&
+                (client['phone'] ?? '').toString().trim().isEmpty) {
+              client['phone'] = phone;
+              changed = true;
+            }
+            if ((client['whatsbotActionId'] ?? '').toString() != actionId) {
+              client['whatsbotActionId'] = actionId;
+              client['whatsbotActionAt'] =
+                  DateTime.now().toUtc().toIso8601String();
+              changed = true;
+            }
+            if (changed) clientsChanged = true;
+            success = true;
+          }
+        } else if (actionType == 'associate_purchase_client') {
+          final purchaseId = (payload['purchaseId'] ?? '').toString();
+          final purchaseExternalId =
+              (payload['purchaseExternalId'] ?? '').toString();
+          final clientId = (payload['clientId'] ?? '').toString();
+
+          final clientExists = active(clients).any(
+            (row) => (row['id'] ?? '').toString() == clientId,
+          );
+          final purchaseIndex = purchases.indexWhere((row) {
+            final id = (row['id'] ?? '').toString();
+            final external = (row['whatsbotSyncId'] ?? '').toString();
+            return (purchaseId.isNotEmpty && id == purchaseId) ||
+                (purchaseExternalId.isNotEmpty &&
+                    external == purchaseExternalId);
+          });
+
+          if (clientExists && purchaseIndex >= 0) {
+            final purchase = purchases[purchaseIndex];
+            final total = number(purchase['total']);
+            final commissionPct = number(purchase['commissionPct']);
+            final clientTotal = total * (1 + commissionPct / 100);
+            purchase['clientId'] = clientId;
+            purchase['clientTotal'] = clientTotal;
+            purchase['unassigned'] = false;
+            purchase['allocations'] = [
+              {
+                'clientId': clientId,
+                'subtotal': total,
+                'extras': 0.0,
+                'commissionPct': commissionPct,
+                'total': clientTotal,
+                'itemIds': ((purchase['items'] as List?) ?? const [])
+                    .whereType<Map>()
+                    .map((item) => (item['id'] ?? '').toString())
+                    .where((id) => id.isNotEmpty)
+                    .toList(),
+              }
+            ];
+            final rawItems = purchase['items'];
+            if (rawItems is List) {
+              for (final rawItem in rawItems) {
+                if (rawItem is Map) {
+                  rawItem['clientId'] = clientId;
+                }
+              }
+            }
+            purchase['whatsbotActionId'] = actionId;
+            purchase['whatsbotActionAt'] =
+                DateTime.now().toUtc().toIso8601String();
+            purchasesChanged = true;
+            success = true;
           }
         } else if (actionType == 'payment') {
           final clientId = (payload['clientId'] ?? '').toString();
@@ -349,6 +473,8 @@ class WhatsBotPurchaseSyncService {
 
       if (packagesChanged) await Store.saveList('packages', packages);
       if (paymentsChanged) await Store.saveList('payments', payments);
+      if (clientsChanged) await Store.saveList('clients', clients);
+      if (purchasesChanged) await Store.saveList('purchases', purchases);
       return applied;
     } catch (_) {
       return 0;
