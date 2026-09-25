@@ -1,5 +1,19 @@
 part of 'main.dart';
 
+List<String> packagePhotoPaths(Map<String, dynamic> package) {
+  final out = <String>[];
+  final raw = package['photoPaths'];
+  if (raw is List) {
+    for (final value in raw) {
+      final path = '$value'.trim();
+      if (path.isNotEmpty && !out.contains(path)) out.add(path);
+    }
+  }
+  final legacy = '${package['photoPath'] ?? ''}'.trim();
+  if (legacy.isNotEmpty && !out.contains(legacy)) out.add(legacy);
+  return out;
+}
+
 class PackagesPage extends StatefulWidget {
   const PackagesPage({super.key});
   @override
@@ -60,7 +74,21 @@ class _PackagesPageState extends State<PackagesPage> {
                     final p = f[i];
                     final remote = '${p['courierStatusEs'] ?? ''}'.trim();
                     return ListTile(
-                      leading: const Icon(Icons.inventory_2),
+                      leading: Builder(builder: (_) {
+                        final photos = packagePhotoPaths(p)
+                            .where((path) => File(path).existsSync())
+                            .toList();
+                        if (photos.isEmpty) return const Icon(Icons.inventory_2);
+                        return ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.file(
+                            File(photos.first),
+                            width: 52,
+                            height: 52,
+                            fit: BoxFit.cover,
+                          ),
+                        );
+                      }),
                       title: Text('${p['tracking']}'),
                       subtitle: Text('${clientName(clients, '${p['clientId']}')} · ${p['carrier']}\n${remote.isNotEmpty ? remote : p['status']} · ${number(p['billWeight']).toStringAsFixed(1)} lb'),
                       isThreeLine: true,
@@ -207,7 +235,13 @@ class _ScannerPageState extends State<ScannerPage> {
 class PackageEditPage extends StatefulWidget {
   final Map<String, dynamic>? existing;
   final String? initialTracking;
-  const PackageEditPage({super.key, this.existing, this.initialTracking});
+  final String? initialClientId;
+  const PackageEditPage({
+    super.key,
+    this.existing,
+    this.initialTracking,
+    this.initialClientId,
+  });
   @override
   State<PackageEditPage> createState() => _PackageEditPageState();
 }
@@ -217,6 +251,7 @@ class _PackageEditPageState extends State<PackageEditPage> {
   List<Map<String, dynamic>> clients = [], purchases = [], recipients = [];
   String? clientId, purchaseId, recipientId;
   String carrier = 'Auto / Otro', status = 'Tracking creado';
+  List<String> photoPaths = [];
   bool loaded = false, syncing = false;
 
   @override
@@ -228,13 +263,14 @@ class _PackageEditPageState extends State<PackageEditPage> {
     tracking.text = '${widget.existing?['tracking'] ?? widget.initialTracking ?? ''}';
     carrier = '${widget.existing?['carrier'] ?? inferCarrier(tracking.text)}';
     status = '${widget.existing?['status'] ?? 'Tracking creado'}';
-    clientId = widget.existing?['clientId']?.toString();
+    clientId = widget.existing?['clientId']?.toString() ?? widget.initialClientId;
     purchaseId = widget.existing?['purchaseId']?.toString();
     recipientId = widget.existing?['recipientId']?.toString();
     weightUs.text = '${widget.existing?['weightUs'] ?? ''}';
     weightCu.text = '${widget.existing?['weightCu'] ?? ''}';
     billWeight.text = '${widget.existing?['billWeight'] ?? ''}';
     notes.text = '${widget.existing?['notes'] ?? ''}';
+    if (widget.existing != null) photoPaths = packagePhotoPaths(widget.existing!);
     if (mounted) setState(() => loaded = true);
   }
 
@@ -271,6 +307,87 @@ class _PackageEditPageState extends State<PackageEditPage> {
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(r.message ?? 'Revisados: ${r.checked} · Cambios: ${r.changed} · Errores: ${r.errors}')));
   }
 
+
+  Future<String> _copyPackagePhoto(XFile picked) async {
+    final dir = await getApplicationDocumentsDirectory();
+    final lower = picked.path.toLowerCase();
+    final ext = lower.endsWith('.png')
+        ? 'png'
+        : lower.endsWith('.webp')
+            ? 'webp'
+            : 'jpg';
+    final target =
+        '${dir.path}/package_photo_${DateTime.now().microsecondsSinceEpoch}_${photoPaths.length}.$ext';
+    await File(picked.path).copy(target);
+    return target;
+  }
+
+  Future<void> pickPackagePhotos() async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Wrap(children: [
+          ListTile(
+            leading: const Icon(Icons.camera_alt),
+            title: const Text('Tomar una foto'),
+            onTap: () => Navigator.pop(context, 'camera'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.collections_outlined),
+            title: const Text('Elegir una o varias de la galería'),
+            onTap: () => Navigator.pop(context, 'gallery'),
+          ),
+        ]),
+      ),
+    );
+    if (action == null) return;
+    final picker = ImagePicker();
+    final added = <String>[];
+    if (action == 'camera') {
+      final image =
+          await picker.pickImage(source: ImageSource.camera, imageQuality: 88);
+      if (image != null) added.add(await _copyPackagePhoto(image));
+    } else {
+      final images = await picker.pickMultiImage(imageQuality: 88);
+      for (final image in images) {
+        added.add(await _copyPackagePhoto(image));
+      }
+    }
+    if (!mounted || added.isEmpty) return;
+    setState(() {
+      for (final path in added) {
+        if (!photoPaths.contains(path)) photoPaths.add(path);
+      }
+    });
+  }
+
+  Future<void> openPackagePhoto(String path) async {
+    if (!File(path).existsSync()) return;
+    await showDialog<void>(
+      context: context,
+      builder: (_) => Dialog(
+        insetPadding: const EdgeInsets.all(12),
+        child: Stack(
+          children: [
+            InteractiveViewer(
+              minScale: 0.7,
+              maxScale: 5,
+              child: Image.file(File(path), fit: BoxFit.contain),
+            ),
+            Positioned(
+              right: 4,
+              top: 4,
+              child: IconButton.filledTonal(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> save() async {
     final code = tracking.text.trim();
     if (code.isEmpty || clientId == null) {
@@ -295,6 +412,8 @@ class _PackageEditPageState extends State<PackageEditPage> {
       'billWeight': number(billWeight.text),
       'status': status,
       'notes': notes.text.trim(),
+      'photoPaths': photoPaths,
+      'photoPath': photoPaths.isEmpty ? '' : photoPaths.first,
       'receivedAt': status == 'Recibido' ? (widget.existing?['receivedAt'] ?? DateTime.now().toIso8601String()) : widget.existing?['receivedAt'],
       'deleted': false,
     };
@@ -352,6 +471,54 @@ class _PackageEditPageState extends State<PackageEditPage> {
         _drop('Estado', status, ['Tracking creado', 'En tránsito', 'Sale para entrega', 'Recibido', 'Verificado', 'Listo para Cuba', 'Asignado a viaje', 'En tránsito a Cuba', 'Llegó a Cuba', 'Entregado', 'Problema'].map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(), (v) => setState(() => status = v ?? status)),
         const SizedBox(height: 12),
         TextField(controller: notes, maxLines: 3, decoration: const InputDecoration(labelText: 'Notas')),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: pickPackagePhotos,
+          icon: const Icon(Icons.add_a_photo_outlined),
+          label: Text(photoPaths.isEmpty ? 'Añadir fotos del paquete' : 'Añadir más fotos'),
+        ),
+        if (photoPaths.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 82,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: photoPaths.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (_, i) {
+                final path = photoPaths[i];
+                return Stack(
+                  children: [
+                    InkWell(
+                      onTap: () => openPackagePhoto(path),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: File(path).existsSync()
+                            ? Image.file(File(path), width: 82, height: 82, fit: BoxFit.cover)
+                            : Container(
+                                width: 82,
+                                height: 82,
+                                alignment: Alignment.center,
+                                child: const Icon(Icons.broken_image_outlined),
+                              ),
+                      ),
+                    ),
+                    Positioned(
+                      right: 2,
+                      top: 2,
+                      child: IconButton.filledTonal(
+                        visualDensity: VisualDensity.compact,
+                        tooltip: 'Quitar foto',
+                        onPressed: () => setState(() => photoPaths.removeAt(i)),
+                        icon: const Icon(Icons.close, size: 18),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
         if (widget.existing != null && (remote.isNotEmpty || details.isNotEmpty)) ...[
           const SizedBox(height: 16),
           _sectionCard(context, 'Estado del courier', Icons.local_shipping, [
