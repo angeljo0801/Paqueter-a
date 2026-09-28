@@ -220,6 +220,144 @@ class WhatsBotPurchaseSyncService {
     return pushed;
   }
 
+  static Future<int> _pushPackages(
+    String url,
+    String key,
+    List<Map<String, dynamic>> packages,
+    List<Map<String, dynamic>> clients,
+    List<Map<String, dynamic>> purchases,
+    List<Map<String, dynamic>> recipients,
+  ) async {
+    var pushed = 0;
+    var changed = false;
+    final clientsById = <String, Map<String, dynamic>>{
+      for (final row in active(clients)) (row['id'] ?? '').toString(): row,
+    };
+    final purchasesById = <String, Map<String, dynamic>>{
+      for (final row in active(purchases)) (row['id'] ?? '').toString(): row,
+    };
+    final recipientsById = <String, Map<String, dynamic>>{
+      for (final row in active(recipients)) (row['id'] ?? '').toString(): row,
+    };
+
+    for (final package in active(packages)) {
+      final id = (package['id'] ?? '').toString();
+      final tracking = (package['tracking'] ?? '').toString().trim();
+      if (id.isEmpty || tracking.isEmpty) continue;
+
+      final existingExternal =
+          (package['whatsbotPackageSyncId'] ?? '').toString().trim();
+      final externalId = existingExternal.isEmpty
+          ? 'paqueteria-package-' + id
+          : existingExternal;
+
+      final client = clientsById[(package['clientId'] ?? '').toString()];
+      final purchase = purchasesById[(package['purchaseId'] ?? '').toString()];
+      final recipient = recipientsById[(package['recipientId'] ?? '').toString()];
+      final paths = packagePhotoPaths(package);
+      final photoStamp = <String>[];
+      for (final path in paths) {
+        try {
+          final file = File(path);
+          if (!await file.exists()) continue;
+          final stat = await file.stat();
+          photoStamp.add(
+            path + ':' + stat.modified.millisecondsSinceEpoch.toString(),
+          );
+        } catch (_) {}
+      }
+
+      final clientExternal =
+          (client?['whatsbotClientSyncId'] ?? '').toString().trim();
+      final clientExternalId = clientExternal.isNotEmpty
+          ? clientExternal
+          : (client == null
+              ? ''
+              : 'paqueteria-client-' + (client['id'] ?? '').toString());
+
+      final purchaseExternal =
+          (purchase?['whatsbotSyncId'] ?? '').toString().trim();
+      final purchaseExternalId = purchaseExternal.isNotEmpty
+          ? purchaseExternal
+          : (purchase == null
+              ? ''
+              : 'paqueteria-purchase-' + (purchase['id'] ?? '').toString());
+
+      final fingerprintPayload = <String, dynamic>{
+        'external_id': externalId,
+        'tracking': tracking,
+        'carrier': (package['carrier'] ?? 'Auto / Otro').toString(),
+        'client_external_id': clientExternalId,
+        'client_name': (client?['name'] ?? '').toString(),
+        'client_phone': (client?['phone'] ?? '').toString(),
+        'purchase_external_id': purchaseExternalId,
+        'recipient_id': (recipient?['id'] ?? '').toString(),
+        'recipient_name': (recipient?['name'] ?? '').toString(),
+        'weight_us': number(package['weightUs']),
+        'weight_cu': number(package['weightCu']),
+        'bill_weight': number(package['billWeight']),
+        'status': (package['status'] ?? 'Tracking creado').toString(),
+        'notes': (package['notes'] ?? '').toString(),
+        'received_at': (package['receivedAt'] ?? '').toString(),
+        'photos': photoStamp,
+      };
+      final fingerprint = _stableHash(jsonEncode(fingerprintPayload));
+      if ((package['whatsbotPackagePushHash'] ?? '').toString() == fingerprint) {
+        continue;
+      }
+
+      final photos = <Map<String, String>>[];
+      for (final path in paths) {
+        try {
+          final file = File(path);
+          if (!await file.exists()) continue;
+          final bytes = await file.readAsBytes();
+          if (bytes.length > 8 * 1024 * 1024) continue;
+          photos.add({
+            'name': file.uri.pathSegments.isEmpty
+                ? 'package.jpg'
+                : file.uri.pathSegments.last,
+            'data': base64Encode(bytes),
+          });
+        } catch (_) {}
+      }
+
+      final payload = <String, dynamic>{
+        ...fingerprintPayload,
+        'photos': photos,
+        'source': 'paqueteria',
+        'created_at': (package['createdAt'] ?? package['receivedAt'] ?? '')
+                .toString()
+                .trim()
+                .isEmpty
+            ? DateTime.now().toUtc().toIso8601String()
+            : (package['createdAt'] ?? package['receivedAt']).toString(),
+      };
+
+      try {
+        final response = await http
+            .post(
+              Uri.parse(url + '/api/packages'),
+              headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': key,
+              },
+              body: jsonEncode(payload),
+            )
+            .timeout(const Duration(seconds: 45));
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          package['whatsbotPackageSyncId'] = externalId;
+          package['whatsbotPackagePushHash'] = fingerprint;
+          changed = true;
+          pushed++;
+        }
+      } catch (_) {}
+    }
+
+    if (changed) await Store.saveList('packages', packages);
+    return pushed;
+  }
+
   static Future<void> _uploadSnapshot(String url, String key) async {
     try {
       final values = await Future.wait([
