@@ -669,13 +669,36 @@ class WhatsBotPurchaseSyncService {
         .map((e) => Map<String, dynamic>.from(e))
         .toList();
 
+    List<Map<String, dynamic>> remotePackages = [];
+    try {
+      final packageResponse = await http
+          .get(
+            Uri.parse('$url/api/packages'),
+            headers: {'x-api-key': key},
+          )
+          .timeout(const Duration(seconds: 15));
+      if (packageResponse.statusCode == 200) {
+        final packageDecoded = jsonDecode(packageResponse.body);
+        if (packageDecoded is List) {
+          remotePackages = packageDecoded
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
+        }
+      }
+    } catch (_) {}
+
     final clients = await Store.list('clients');
     final purchases = await Store.list('purchases');
+    final packages = await Store.list('packages');
+    final recipients = await Store.list('recipients');
     final settings = await Store.settings();
     final commission = number(settings['purchaseCommissionPct']);
     var imported = 0;
     var importedClients = 0;
+    var importedPackages = 0;
     var clientsChanged = false;
+    var packagesChanged = false;
 
     for (final item in remoteClients.reversed) {
       final externalId = '${item['external_id'] ?? item['id'] ?? ''}'.trim();
@@ -940,11 +963,203 @@ class WhatsBotPurchaseSyncService {
       imported++;
     }
 
+    for (final item in remotePackages.reversed) {
+      final externalId = '${item['external_id'] ?? item['id'] ?? ''}'.trim();
+      final tracking = '${item['tracking'] ?? ''}'.trim();
+      if (externalId.isEmpty || tracking.isEmpty) continue;
+
+      var existingPackageIndex = packages.indexWhere(
+        (row) => '${row['whatsbotPackageSyncId'] ?? ''}' == externalId,
+      );
+      if (existingPackageIndex < 0) {
+        final normalizedTracking =
+            tracking.replaceAll(RegExp(r'\s+'), '').toUpperCase();
+        existingPackageIndex = packages.indexWhere(
+          (row) => '${row['tracking'] ?? ''}'
+                  .replaceAll(RegExp(r'\s+'), '')
+                  .toUpperCase() ==
+              normalizedTracking,
+        );
+      }
+
+      final remoteUpdatedAt = '${item['updated_at'] ?? ''}'.trim();
+      if (existingPackageIndex >= 0 &&
+          remoteUpdatedAt.isNotEmpty &&
+          '${packages[existingPackageIndex]['whatsbotPackageRemoteUpdatedAt'] ?? ''}' ==
+              remoteUpdatedAt) {
+        continue;
+      }
+
+      final clientExternal = '${item['client_external_id'] ?? ''}'.trim();
+      final clientName = '${item['client_name'] ?? ''}'.trim();
+      final clientPhone = '${item['client_phone'] ?? ''}'.trim();
+      Map<String, dynamic>? client;
+
+      if (clientExternal.isNotEmpty) {
+        for (final row in active(clients)) {
+          final localId = '${row['id'] ?? ''}';
+          final synced = '${row['whatsbotClientSyncId'] ?? ''}';
+          if (localId == clientExternal ||
+              synced == clientExternal ||
+              'paqueteria-client-$localId' == clientExternal) {
+            client = row;
+            break;
+          }
+        }
+      }
+      if (client == null && clientPhone.isNotEmpty) {
+        final normalized = normalizePhone(clientPhone);
+        for (final row in active(clients)) {
+          if (normalizePhone(row['phone']) == normalized) {
+            client = row;
+            break;
+          }
+        }
+      }
+      if (client == null && clientName.isNotEmpty) {
+        final target = clientName.toLowerCase();
+        for (final row in active(clients)) {
+          if ('${row['name'] ?? ''}'.trim().toLowerCase() == target) {
+            client = row;
+            break;
+          }
+        }
+      }
+      if (client == null && (clientName.isNotEmpty || clientPhone.isNotEmpty)) {
+        client = {
+          'id': newId(),
+          'name': clientName.isEmpty ? 'Cliente WhatsBot' : clientName,
+          'phone': clientPhone,
+          'email': '',
+          'notes': 'Creado al sincronizar un paquete desde WhatsBot',
+          'whatsbotClientSyncId': clientExternal,
+          'source': 'whatsbot',
+          'deleted': false,
+        };
+        clients.add(client);
+        clientsChanged = true;
+        importedClients++;
+      }
+
+      final purchaseExternal =
+          '${item['purchase_external_id'] ?? ''}'.trim();
+      Map<String, dynamic>? purchase;
+      if (purchaseExternal.isNotEmpty) {
+        for (final row in active(purchases)) {
+          final localId = '${row['id'] ?? ''}';
+          final synced = '${row['whatsbotSyncId'] ?? ''}';
+          if (localId == purchaseExternal ||
+              synced == purchaseExternal ||
+              'paqueteria-purchase-$localId' == purchaseExternal) {
+            purchase = row;
+            break;
+          }
+        }
+      }
+
+      final recipientExternal = '${item['recipient_id'] ?? ''}'.trim();
+      Map<String, dynamic>? recipient;
+      if (recipientExternal.isNotEmpty) {
+        for (final row in active(recipients)) {
+          if ('${row['id'] ?? ''}' == recipientExternal) {
+            recipient = row;
+            break;
+          }
+        }
+      }
+
+      final photos = <String>[];
+      final photoUrls = item['photo_urls'];
+      if (photoUrls is List) {
+        for (var i = 0; i < photoUrls.length; i++) {
+          final rawPath = '${photoUrls[i]}'.trim();
+          if (rawPath.isEmpty) continue;
+          try {
+            final photoUri = Uri.parse(url).resolve(rawPath);
+            final imageResponse = await http
+                .get(photoUri, headers: {'x-api-key': key})
+                .timeout(const Duration(seconds: 20));
+            if (imageResponse.statusCode != 200 ||
+                imageResponse.bodyBytes.isEmpty) {
+              continue;
+            }
+            final docs = await getApplicationDocumentsDirectory();
+            final contentType =
+                imageResponse.headers['content-type']?.toLowerCase() ?? '';
+            final ext = contentType.contains('png')
+                ? 'png'
+                : contentType.contains('webp')
+                    ? 'webp'
+                    : 'jpg';
+            final safe = externalId.replaceAll(
+              RegExp(r'[^A-Za-z0-9_-]'),
+              '_',
+            );
+            final file = File(
+              '${docs.path}/whatsbot_package_${safe}_$i.$ext',
+            );
+            await file.writeAsBytes(imageResponse.bodyBytes, flush: true);
+            photos.add(file.path);
+          } catch (_) {}
+        }
+      }
+
+      final existing =
+          existingPackageIndex >= 0 ? packages[existingPackageIndex] : null;
+      final existingPhotos =
+          existing == null ? <String>[] : packagePhotoPaths(existing);
+      final packagePhotos = photos.isEmpty ? existingPhotos : photos;
+      final incoming = <String, dynamic>{
+        'id': existing?['id'] ?? newId(),
+        'tracking': tracking,
+        'carrier': '${item['carrier'] ?? 'Auto / Otro'}',
+        'clientId': client?['id']?.toString(),
+        'purchaseId': purchase?['id']?.toString(),
+        'recipientId': recipient?['id']?.toString() ??
+            (recipientExternal.isEmpty ? null : recipientExternal),
+        'weightUs': number(item['weight_us']),
+        'weightCu': number(item['weight_cu']),
+        'billWeight': number(item['bill_weight']),
+        'status': '${item['status'] ?? 'Tracking creado'}',
+        'notes': '${item['notes'] ?? ''}',
+        'photoPaths': packagePhotos,
+        'photoPath': packagePhotos.isEmpty ? '' : packagePhotos.first,
+        'receivedAt': '${item['received_at'] ?? ''}'.trim().isEmpty
+            ? existing?['receivedAt']
+            : '${item['received_at']}',
+        'whatsbotPackageSyncId': externalId,
+        'whatsbotPackageRemoteId': item['id'],
+        'whatsbotPackageRemoteUpdatedAt': remoteUpdatedAt,
+        'source': '${item['source'] ?? 'whatsbot'}',
+        'deleted': false,
+      };
+
+      if (existingPackageIndex >= 0) {
+        packages[existingPackageIndex] = {
+          ...packages[existingPackageIndex],
+          ...incoming,
+        };
+      } else {
+        packages.add(incoming);
+      }
+      packagesChanged = true;
+      importedPackages++;
+    }
+
     if (clientsChanged) await Store.saveList('clients', clients);
     if (imported > 0) await Store.saveList('purchases', purchases);
+    if (packagesChanged) await Store.saveList('packages', packages);
 
     final pushedClients = await _pushClients(url, key, clients);
     final pushedPurchases = await _pushPurchases(url, key, purchases, clients);
+    final pushedPackages = await _pushPackages(
+      url,
+      key,
+      packages,
+      clients,
+      purchases,
+      recipients,
+    );
     final appliedActions = await _applyRemoteActions(url, key);
     await _uploadSnapshot(url, key);
 
@@ -957,6 +1172,12 @@ class WhatsBotPurchaseSyncService {
       'whatsbot_combo_last_sync',
       DateTime.now().toIso8601String(),
     );
-    return imported + importedClients + pushedClients + pushedPurchases + appliedActions;
+    return imported +
+        importedClients +
+        importedPackages +
+        pushedClients +
+        pushedPurchases +
+        pushedPackages +
+        appliedActions;
   }
 }
