@@ -1125,7 +1125,7 @@ class WhatsBotPurchaseSyncService {
         'photoPaths': packagePhotos,
         'photoPath': packagePhotos.isEmpty ? '' : packagePhotos.first,
         'receivedAt': '${item['received_at'] ?? ''}'.trim().isEmpty
-            ? existing?['receivedAt']
+            ? (existing == null ? null : existing['receivedAt'])
             : '${item['received_at']}',
         'whatsbotPackageSyncId': externalId,
         'whatsbotPackageRemoteId': item['id'],
