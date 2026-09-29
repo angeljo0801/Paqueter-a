@@ -280,7 +280,7 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(()=>syncing=true);
     try{
       await save();
-      final count=await WhatsBotPurchaseSyncService.sync();
+      final count=await WhatsBotPurchaseSyncService.sync(forcePush:true);
       if(mounted){
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content:Text(count==0
@@ -338,9 +338,10 @@ class _SettingsPageState extends State<SettingsPage> {
           const SizedBox(height:8),
           SwitchListTile(
             contentPadding:EdgeInsets.zero,
-            title:const Text('Importar compras automáticamente'),
+            title:const Text('Sincronizar clientes, compras y paquetes automáticamente'),
             subtitle:const Text(
-              'WhatsBot envía nombre, número, detalles y fotos; Paquetería crea o reutiliza el cliente y registra la compra.',
+              'Mantiene Paquetería y WhatsBot conectados con el servidor. '
+              'El botón manual fuerza el envío completo aunque los datos no hayan cambiado.',
             ),
             value:whatsBotSyncEnabled,
             onChanged:(v)=>setState(()=>whatsBotSyncEnabled=v),
@@ -371,7 +372,7 @@ class _SettingsPageState extends State<SettingsPage> {
             icon:syncing
               ? const SizedBox.square(dimension:18,child:CircularProgressIndicator(strokeWidth:2))
               : const Icon(Icons.sync),
-            label:Text(syncing?'Sincronizando…':'Sincronizar WhatsBot ahora'),
+            label:Text(syncing?'Sincronizando…':'Subir todo y sincronizar ahora'),
           ),
           const SizedBox(height:18),
           FilledButton.icon(
