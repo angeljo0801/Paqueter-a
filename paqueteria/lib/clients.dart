@@ -153,6 +153,7 @@ class _ClientsPageState extends State<ClientsPage> {
   List<Map<String, dynamic>> rows = [], purchases = [], payments = [];
   String q = '';
   bool importing = false;
+  bool syncing = false;
 
   @override
   void initState() {
@@ -173,6 +174,31 @@ class _ClientsPageState extends State<ClientsPage> {
       purchases = active(r[1]);
       payments = active(r[2]);
     });
+  }
+
+  Future<void> syncAllNow() async {
+    if (syncing) return;
+    setState(() => syncing = true);
+    try {
+      final count = await WhatsBotPurchaseSyncService.sync(forcePush: true);
+      await load();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Datos enviados al servidor. '
+            '${rows.length} clientes locales · $count cambio(s) sincronizado(s).',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo sincronizar con WhatsBot: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => syncing = false);
+    }
   }
 
   Future<void> importFromContacts() async {
@@ -322,6 +348,17 @@ class _ClientsPageState extends State<ClientsPage> {
       appBar: AppBar(
         title: const Text('Clientes'),
         actions: [
+          IconButton(
+            tooltip: 'Subir clientes, compras y paquetes a WhatsBot',
+            onPressed: syncing ? null : syncAllNow,
+            icon: syncing
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.sync),
+          ),
           IconButton(
             tooltip: 'Crear clientes desde contactos',
             onPressed: importing ? null : importFromContacts,
