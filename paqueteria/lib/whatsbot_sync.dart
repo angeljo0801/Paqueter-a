@@ -60,8 +60,9 @@ class WhatsBotPurchaseSyncService {
   static Future<int> _pushClients(
     String url,
     String key,
-    List<Map<String, dynamic>> clients,
-  ) async {
+    List<Map<String, dynamic>> clients, {
+    bool force = false,
+  }) async {
     var pushed = 0;
     var changed = false;
     for (final client in active(clients)) {
@@ -76,7 +77,8 @@ class WhatsBotPurchaseSyncService {
         'source': 'paqueteria',
       };
       final fingerprint = _stableHash(jsonEncode(payload));
-      if ((client['whatsbotClientPushHash'] ?? '').toString() == fingerprint) {
+      if (!force &&
+          (client['whatsbotClientPushHash'] ?? '').toString() == fingerprint) {
         continue;
       }
       try {
@@ -115,8 +117,9 @@ class WhatsBotPurchaseSyncService {
     String url,
     String key,
     List<Map<String, dynamic>> purchases,
-    List<Map<String, dynamic>> clients,
-  ) async {
+    List<Map<String, dynamic>> clients, {
+    bool force = false,
+  }) async {
     var pushed = 0;
     var changed = false;
     final clientsById = <String, Map<String, dynamic>>{
@@ -159,7 +162,8 @@ class WhatsBotPurchaseSyncService {
         'photos': photoStamp,
       };
       final fingerprint = _stableHash(jsonEncode(fingerprintPayload));
-      if ((purchase['whatsbotPurchasePushHash'] ?? '').toString() == fingerprint) {
+      if (!force &&
+          (purchase['whatsbotPurchasePushHash'] ?? '').toString() == fingerprint) {
         continue;
       }
 
@@ -226,8 +230,9 @@ class WhatsBotPurchaseSyncService {
     List<Map<String, dynamic>> packages,
     List<Map<String, dynamic>> clients,
     List<Map<String, dynamic>> purchases,
-    List<Map<String, dynamic>> recipients,
-  ) async {
+    List<Map<String, dynamic>> recipients, {
+    bool force = false,
+  }) async {
     var pushed = 0;
     var changed = false;
     final clientsById = <String, Map<String, dynamic>>{
@@ -302,7 +307,8 @@ class WhatsBotPurchaseSyncService {
         'photos': photoStamp,
       };
       final fingerprint = _stableHash(jsonEncode(fingerprintPayload));
-      if ((package['whatsbotPackagePushHash'] ?? '').toString() == fingerprint) {
+      if (!force &&
+          (package['whatsbotPackagePushHash'] ?? '').toString() == fingerprint) {
         continue;
       }
 
@@ -358,7 +364,7 @@ class WhatsBotPurchaseSyncService {
     return pushed;
   }
 
-  static Future<void> _uploadSnapshot(String url, String key) async {
+  static Future<bool> _uploadSnapshot(String url, String key) async {
     try {
       final values = await Future.wait([
         Store.list('clients'),
@@ -385,7 +391,7 @@ class WhatsBotPurchaseSyncService {
         'agentReports': active(values[9]),
         'updatedAt': DateTime.now().toUtc().toIso8601String(),
       };
-      await http
+      final response = await http
           .put(
             Uri.parse(url + '/api/paqueteria/snapshot'),
             headers: {
@@ -395,7 +401,10 @@ class WhatsBotPurchaseSyncService {
             body: jsonEncode(payload),
           )
           .timeout(const Duration(seconds: 30));
-    } catch (_) {}
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (_) {
+      return false;
+    }
   }
 
   static Future<int> _applyRemoteActions(String url, String key) async {
@@ -627,10 +636,17 @@ class WhatsBotPurchaseSyncService {
     }
   }
 
-  static Future<int> sync() async {
+  static Future<int> sync({bool forcePush = false}) async {
     if (!await enabled()) return 0;
     final key = await apiKey();
-    if (key.isEmpty) return 0;
+    if (key.isEmpty) {
+      if (forcePush) {
+        throw Exception(
+          'Falta la APP_API_KEY de WhatsBot en Configuración del negocio.',
+        );
+      }
+      return 0;
+    }
     final url = await backendUrl();
 
     List<Map<String, dynamic>> remoteClients = [];
@@ -1150,8 +1166,19 @@ class WhatsBotPurchaseSyncService {
     if (imported > 0) await Store.saveList('purchases', purchases);
     if (packagesChanged) await Store.saveList('packages', packages);
 
-    final pushedClients = await _pushClients(url, key, clients);
-    final pushedPurchases = await _pushPurchases(url, key, purchases, clients);
+    final pushedClients = await _pushClients(
+      url,
+      key,
+      clients,
+      force: forcePush,
+    );
+    final pushedPurchases = await _pushPurchases(
+      url,
+      key,
+      purchases,
+      clients,
+      force: forcePush,
+    );
     final pushedPackages = await _pushPackages(
       url,
       key,
@@ -1159,9 +1186,16 @@ class WhatsBotPurchaseSyncService {
       clients,
       purchases,
       recipients,
+      force: forcePush,
     );
     final appliedActions = await _applyRemoteActions(url, key);
-    await _uploadSnapshot(url, key);
+    final snapshotUploaded = await _uploadSnapshot(url, key);
+    if (forcePush && !snapshotUploaded) {
+      throw Exception(
+        'Paquetería no pudo subir la base completa al servidor de WhatsBot. '
+        'Revisa el servidor y la APP_API_KEY.',
+      );
+    }
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
