@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
@@ -152,8 +153,18 @@ class PaqueteriaBackupService {
 
   static Future<void> restore(String uri) async {
     final bytes = await PaqueteriaBackupBridge.read(uri);
+    await restoreBytes(bytes);
+  }
+
+  static Future<void> restoreBytes(Uint8List bytes) async {
     if (bytes.isEmpty) throw Exception('La copia está vacía.');
-    final archive = ZipDecoder().decodeBytes(bytes);
+
+    Archive archive;
+    try {
+      archive = ZipDecoder().decodeBytes(bytes);
+    } catch (_) {
+      throw Exception('El archivo seleccionado no es un ZIP válido.');
+    }
 
     ArchiveFile? meta;
     ArchiveFile? prefsFile;
@@ -293,57 +304,112 @@ class _PaqueteriaBackupPageState extends State<PaqueteriaBackupPage> {
     }
   }
 
-  Future<void> _restore(Map<String, dynamic> item) async {
-    final ok = await showDialog<bool>(
+  Future<bool> _confirmRestore(String name) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Restaurar copia'),
+            content: Text(
+              'Se reemplazarán los datos actuales por "$name".',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Restaurar'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  Future<void> _showRestoredAndClose() async {
+    if (!mounted) return;
+    await showDialog<void>(
       context: context,
+      barrierDismissible: false,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Restaurar copia'),
-        content: Text(
-          'Se reemplazarán los datos actuales por "' +
-              (item['name']?.toString() ?? 'backup') +
-              '".',
+        title: const Text('Copia restaurada'),
+        content: const Text(
+          'La copia fue importada correctamente. Cierra y vuelve a abrir '
+          'Paquetería para cargar todos los datos restaurados.',
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancelar'),
-          ),
           FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Restaurar'),
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              SystemNavigator.pop();
+            },
+            child: const Text('Cerrar Paquetería'),
           ),
         ],
       ),
     );
-    if (ok != true) return;
+  }
+
+  Future<void> _restore(Map<String, dynamic> item) async {
+    final name = item['name']?.toString() ?? 'backup';
+    if (!await _confirmRestore(name)) return;
 
     setState(() => working = true);
     try {
       await PaqueteriaBackupService.restore(item['uri']?.toString() ?? '');
-      if (!mounted) return;
-      await showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Copia restaurada'),
-          content: const Text(
-            'Cierra y vuelve a abrir Paquetería para cargar todos los datos restaurados.',
-          ),
-          actions: [
-            FilledButton(
-              onPressed: () {
-                Navigator.pop(dialogContext);
-                SystemNavigator.pop();
-              },
-              child: const Text('Cerrar Paquetería'),
-            ),
-          ],
-        ),
-      );
+      await _showRestoredAndClose();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('No pude restaurar la copia: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => working = false);
+    }
+  }
+
+  Future<void> _importFromFile() async {
+    FilePickerResult? result;
+    try {
+      result = await FilePicker.platform.pickFiles(
+        dialogTitle: 'Selecciona una copia de Paquetería',
+        type: FileType.custom,
+        allowedExtensions: const ['zip'],
+        allowMultiple: false,
+        withData: true,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No pude abrir el selector de archivos: $e')),
+        );
+      }
+      return;
+    }
+    if (result == null || result.files.isEmpty) return;
+
+    final picked = result.files.single;
+    if (!await _confirmRestore(picked.name)) return;
+
+    setState(() => working = true);
+    try {
+      Uint8List bytes;
+      if (picked.bytes != null && picked.bytes!.isNotEmpty) {
+        bytes = picked.bytes!;
+      } else if (picked.path != null && picked.path!.isNotEmpty) {
+        bytes = await File(picked.path!).readAsBytes();
+      } else {
+        throw Exception('No pude leer el archivo seleccionado.');
+      }
+
+      await PaqueteriaBackupService.restoreBytes(bytes);
+      await _showRestoredAndClose();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No pude importar la copia: $e')),
         );
       }
     } finally {
@@ -389,9 +455,17 @@ class _PaqueteriaBackupPageState extends State<PaqueteriaBackupPage> {
                         Text(working ? 'Procesando…' : 'Crear copia ahora'),
                   ),
                   const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: working ? null : _importFromFile,
+                    icon: const Icon(Icons.file_open_outlined),
+                    label: const Text('Importar copia desde archivo'),
+                  ),
+                  const SizedBox(height: 10),
                   const Text(
-                    'Incluye clientes, pedidos, paquetes, fotos, tickets, '
-                    'agentes, remesas, viajes y configuraciones. No incluye '
+                    'Puedes importar directamente un ZIP recibido por Quick Share, '
+                    'WhatsApp, correo o guardado en cualquier carpeta del teléfono.\n\n'
+                    'Las copias incluyen clientes, pedidos, paquetes, fotos, tickets, '
+                    'agentes, remesas, viajes y configuraciones. No incluyen '
                     'credenciales seguras/API keys.',
                   ),
                   const Divider(height: 28),
