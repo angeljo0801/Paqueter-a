@@ -6,6 +6,7 @@ on:
     paths:
       - "paqueteria/**"
       - ".github/patch_paqueteria.py"
+      - ".github/patch_server_recovery.py"
       - ".github/workflows/release-apk.yml"
   workflow_dispatch:
 
@@ -62,7 +63,9 @@ jobs:
           rsvg-convert -w 1024 -h 1024 paqueteria/assets/icon.svg -o app/assets/icon.png
 
       - name: Patch source and Android
-        run: python3 .github/patch_paqueteria.py
+        run: |
+          python3 .github/patch_paqueteria.py
+          python3 .github/patch_server_recovery.py
 
       - name: Configure stable signing
         working-directory: app
