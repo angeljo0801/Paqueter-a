@@ -13,6 +13,7 @@ on:
       - ".github/patch_large_backup_restore.py"
       - ".github/patch_settings_loading.py"
       - ".github/patch_whatsbot_resume_sync.py"
+      - ".github/patch_whatsbot_manual_sync.py"
       - ".github/workflows/whatsbot-resume-sync-apk.yml"
   workflow_dispatch:
 
@@ -70,6 +71,7 @@ jobs:
           python3 .github/patch_large_backup_restore.py
           python3 .github/patch_settings_loading.py
           python3 .github/patch_whatsbot_resume_sync.py
+          python3 .github/patch_whatsbot_manual_sync.py
 
       - name: Configure stable signing
         working-directory: app
@@ -181,7 +183,7 @@ jobs:
           VERSION="$(awk '/^version:/{print $2}' paqueteria/pubspec.yaml | cut -d+ -f1)"
           mkdir -p out
           cp app/build/app/outputs/flutter-apk/app-release.apk "out/Paqueteria-v${VERSION}-WhatsBotResumeSync.apk"
-          printf 'version=%s\napplicationId=com.angelapps.paqueteria\nsigning=persistent\nfeatures=all_previous_fixes plus secure-key-timeout and sync-on-resume\n' "$VERSION" > out/BUILD_IDENTITY.txt
+          printf 'version=%s\napplicationId=com.angelapps.paqueteria\nsigning=persistent\nfeatures=all_previous_fixes plus secure-key-timeout sync-on-resume and manual-sync-bypass\n' "$VERSION" > out/BUILD_IDENTITY.txt
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
