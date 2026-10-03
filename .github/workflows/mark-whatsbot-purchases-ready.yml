@@ -1,0 +1,47 @@
+name: One-time WhatsBot ready purchase sync fix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/mark-whatsbot-purchases-ready.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mark Paqueteria purchases as already confirmed
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('paqueteria/lib/whatsbot_sync.dart')
+          s = p.read_text()
+
+          old = """      final fingerprintPayload = <String, dynamic>{\n        'external_id': externalId,\n        'client': (client?['id'] ?? '').toString(),\n"""
+          new = """      final fingerprintPayload = <String, dynamic>{\n        'external_id': externalId,\n        'source': 'paqueteria',\n        'confirmed': true,\n        'client': (client?['id'] ?? '').toString(),\n"""
+          if old not in s:
+              raise SystemExit('Fingerprint insertion point not found')
+          s = s.replace(old, new, 1)
+
+          old = """      final payload = <String, dynamic>{\n        'external_id': externalId,\n        'customer_name': (client?['name'] ?? '').toString().trim(),\n"""
+          new = """      final payload = <String, dynamic>{\n        'external_id': externalId,\n        'source': 'paqueteria',\n        'confirmed': true,\n        'customer_name': (client?['name'] ?? '').toString().trim(),\n"""
+          if old not in s:
+              raise SystemExit('Payload insertion point not found')
+          s = s.replace(old, new, 1)
+
+          p.write_text(s)
+          PY
+
+          git rm .github/workflows/mark-whatsbot-purchases-ready.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add paqueteria/lib/whatsbot_sync.dart
+          git commit -m "Send Paqueteria purchases to WhatsBot as ready"
+          git push
