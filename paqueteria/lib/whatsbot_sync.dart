@@ -148,6 +148,8 @@ class WhatsBotPurchaseSyncService {
 
       final fingerprintPayload = <String, dynamic>{
         'external_id': externalId,
+        'source': 'paqueteria',
+        'confirmed': true,
         'client': (client?['id'] ?? '').toString(),
         'name': (client?['name'] ?? '').toString(),
         'phone': (client?['phone'] ?? '').toString(),
@@ -186,6 +188,8 @@ class WhatsBotPurchaseSyncService {
       final date = (purchase['date'] ?? '').toString().trim();
       final payload = <String, dynamic>{
         'external_id': externalId,
+        'source': 'paqueteria',
+        'confirmed': true,
         'customer_name': (client?['name'] ?? '').toString().trim(),
         'customer_phone': (client?['phone'] ?? '').toString().trim(),
         'title': (purchase['store'] ?? 'Compra').toString(),
