@@ -22,6 +22,7 @@ PATCHES = [
     '.github/patch_gmail_photo_gallery.py',
     '.github/patch_gmail_link_badges.py',
     '.github/patch_gmail_smart_product_photos.py',
+    '.github/patch_fast_tabs_cache.py',
     '.github/patch_migration_json_merge.py',
 ]
 
@@ -57,6 +58,7 @@ CHECKS = {
         'gmailOfflinePhotoPaths',
         'gmailRejectedImages',
         'Ver imágenes descartadas',
+        "PageStorageKey<String>('packages-main-list')",
     ],
     'app/lib/purchases.dart': [
         '_refreshRemoteAfterLocalLoad',
@@ -140,6 +142,9 @@ CHECKS = {
         "part 'gmail_accounts.dart';",
         "part 'gmail_purchase_link.dart';",
         "import 'dart:ui' as ui;",
+        'body: IndexedStack(',
+        '_listCache',
+        'if (!mounted || changed <= 0) return;',
     ],
 }
 
