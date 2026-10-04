@@ -24,6 +24,7 @@ PATCHES = [
     '.github/patch_gmail_smart_product_photos.py',
     '.github/patch_gmail_product_photo_filter_v2.py',
     '.github/patch_gmail_product_photo_filter_v3.py',
+    '.github/patch_gmail_temu_url_fix_v4.py',
     '.github/patch_gmail_recover_discarded_photos.py',
     '.github/patch_fast_tabs_cache.py',
     '.github/patch_migration_json_merge.py',
