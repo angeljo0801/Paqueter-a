@@ -1,21 +1,26 @@
-name: Build and publish Paqueteria APK
+name: Build and publish canonical Paqueteria APK
 
 on:
   push:
     branches: ["main"]
     paths:
       - "paqueteria/**"
-      - ".github/patch_paqueteria.py"
+      - ".github/build_paqueteria_canonical.py"
+      - ".github/patch_*.py"
       - ".github/workflows/release-apk.yml"
   workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: paqueteria-canonical-release
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
 
     steps:
       - name: Checkout
@@ -52,7 +57,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y librsvg2-bin
 
-      - name: Create Android scaffold
+      - name: Create Android scaffold from canonical source
         run: |
           flutter create --platforms=android --org com.angelapps --project-name paqueteria app
           rm -rf app/lib app/test
@@ -61,10 +66,10 @@ jobs:
           mkdir -p app/assets
           rsvg-convert -w 1024 -h 1024 paqueteria/assets/icon.svg -o app/assets/icon.png
 
-      - name: Patch source and Android
-        run: python3 .github/patch_paqueteria.py
+      - name: Apply and verify complete Paqueteria feature set
+        run: python3 .github/build_paqueteria_canonical.py
 
-      - name: Configure stable signing
+      - name: Configure stable signing and package identity
         working-directory: app
         env:
           PAQUETERIA_KEYSTORE_B64: ${{ secrets.PAQUETERIA_KEYSTORE_B64 }}
@@ -86,62 +91,45 @@ jobs:
           export PAQUETERIA_KEYSTORE_PASSWORD="$(normalize_secret PAQUETERIA_KEYSTORE_PASSWORD "$PAQUETERIA_KEYSTORE_PASSWORD")"
           export PAQUETERIA_KEY_ALIAS="$(normalize_secret PAQUETERIA_KEY_ALIAS "$PAQUETERIA_KEY_ALIAS")"
           export PAQUETERIA_KEY_PASSWORD="$(normalize_secret PAQUETERIA_KEY_PASSWORD "$PAQUETERIA_KEY_PASSWORD")"
-          if [ -n "$PAQUETERIA_KEYSTORE_B64" ]; then
-            printf '%s' "$PAQUETERIA_KEYSTORE_B64" | base64 --decode > android/app/paqueteria-release.jks
-          fi
+          printf '%s' "$PAQUETERIA_KEYSTORE_B64" | base64 --decode > android/app/paqueteria-release.jks
           python3 - <<'PY'
           from pathlib import Path
           import os, re
 
           p = Path('android/app/build.gradle.kts')
           s = p.read_text()
-          s = re.sub(
-              r'namespace\s*=\s*"[^"]+"',
-              'namespace = "com.angelapps.paqueteria"',
-              s,
-              count=1,
-          )
-          s = re.sub(
-              r'applicationId\s*=\s*"[^"]+"',
-              'applicationId = "com.angelapps.paqueteria"',
-              s,
-              count=1,
-          )
+          s = re.sub(r'namespace\s*=\s*"[^"]+"', 'namespace = "com.angelapps.paqueteria"', s, count=1)
+          s = re.sub(r'applicationId\s*=\s*"[^"]+"', 'applicationId = "com.angelapps.paqueteria"', s, count=1)
 
           alias = os.environ.get('PAQUETERIA_KEY_ALIAS', '').strip()
           store_password = os.environ.get('PAQUETERIA_KEYSTORE_PASSWORD', '').strip()
           key_password = os.environ.get('PAQUETERIA_KEY_PASSWORD', '').strip()
           keystore = Path('android/app/paqueteria-release.jks')
+          if not (keystore.exists() and alias and store_password and key_password):
+              raise SystemExit('Stable signing configuration is incomplete')
 
-          if keystore.exists() and alias and store_password and key_password:
-              def esc(value):
-                  return value.replace('\\', '\\\\').replace('"', '\\"')
+          def esc(value):
+              return value.replace('\\', '\\\\').replace('"', '\\"')
 
-              block = '''    signingConfigs {
-                  create("paqueteriaRelease") {
-                      keyAlias = "''' + esc(alias) + '''"
-                      keyPassword = "''' + esc(key_password) + '''"
-                      storeFile = file("paqueteria-release.jks")
-                      storePassword = "''' + esc(store_password) + '''"
-                  }
+          block = '''    signingConfigs {
+              create("paqueteriaRelease") {
+                  keyAlias = "''' + esc(alias) + '''"
+                  keyPassword = "''' + esc(key_password) + '''"
+                  storeFile = file("paqueteria-release.jks")
+                  storePassword = "''' + esc(store_password) + '''"
               }
+          }
 
           '''
-              if 'create("paqueteriaRelease")' not in s:
-                  s = s.replace('    buildTypes {', block + '    buildTypes {', 1)
-              s = re.sub(
-                  r'(getByName\("release"\)\s*\{)(.*?)(\n\s*\})',
-                  lambda m: (
-                      m.group(1)
-                      + m.group(2)
-                      + '\n            signingConfig = signingConfigs.getByName("paqueteriaRelease")'
-                      + m.group(3)
-                  ),
-                  s,
-                  count=1,
-                  flags=re.S,
-              )
-
+          if 'create("paqueteriaRelease")' not in s:
+              s = s.replace('    buildTypes {', block + '    buildTypes {', 1)
+          s = re.sub(
+              r'(getByName\("release"\)\s*\{)(.*?)(\n\s*\})',
+              lambda m: m.group(1) + m.group(2) + '\n            signingConfig = signingConfigs.getByName("paqueteriaRelease")' + m.group(3),
+              s,
+              count=1,
+              flags=re.S,
+          )
           p.write_text(s)
           PY
 
@@ -153,15 +141,18 @@ jobs:
         working-directory: app
         run: dart run flutter_launcher_icons
 
-      - name: Analyze
+      - name: Analyze canonical source
         working-directory: app
         run: flutter analyze --no-fatal-infos --no-fatal-warnings lib
 
-      - name: Build release APK with increasing versionCode
+      - name: Build release APK with permanently increasing versionCode
         working-directory: app
         shell: bash
         run: |
-          BUILD_NUMBER=$((1000 + GITHUB_RUN_NUMBER))
+          # Old experimental workflows used 1000/3000/4000-based versionCodes.
+          # Canonical releases use a much higher range so Android always accepts
+          # them as updates instead of reporting "App not installed / couldn't update".
+          BUILD_NUMBER=$((100000 + GITHUB_RUN_NUMBER))
           echo "PAQUETERIA_BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
           flutter build apk --release --build-number "$BUILD_NUMBER"
 
@@ -201,16 +192,17 @@ jobs:
           "$APKSIGNER" verify --verbose build/app/outputs/flutter-apk/app-release.apk
           rm -f android/app/paqueteria-release.jks
 
-      - name: Record build identity
+      - name: Record canonical build identity
         working-directory: app
-        env:
-          PAQUETERIA_KEYSTORE_B64: ${{ secrets.PAQUETERIA_KEYSTORE_B64 }}
         shell: bash
         run: |
           {
             echo "applicationId=com.angelapps.paqueteria"
             echo "buildNumber=$PAQUETERIA_BUILD_NUMBER"
             echo "signing=persistent"
+            echo "buildPath=canonical"
+            echo "sourceCommit=$GITHUB_SHA"
+            echo "featureSet=complete"
           } > build/app/outputs/flutter-apk/BUILD_IDENTITY.txt
 
       - name: Name APK from app version
@@ -223,16 +215,16 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "apk=$APK" >> "$GITHUB_OUTPUT"
 
-      - name: Upload workflow artifact
+      - name: Upload canonical workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Paqueteria-v${{ steps.version.outputs.version }}-APK
+          name: Paqueteria-v${{ steps.version.outputs.version }}-Canonical-APK
           path: |
             ${{ steps.version.outputs.apk }}
             app/build/app/outputs/flutter-apk/BUILD_IDENTITY.txt
           retention-days: 30
 
-      - name: Publish GitHub Release
+      - name: Publish canonical GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.version }}
@@ -240,8 +232,10 @@ jobs:
         shell: bash
         run: |
           TAG="v$VERSION"
+          NOTES="APK canónica de Paquetería. Incluye el conjunto completo de mejoras verificadas por CI y usa firma persistente + versionCode de rango canónico."
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "$APK" --clobber
+            gh release edit "$TAG" --notes "$NOTES"
           else
-            gh release create "$TAG" "$APK" --title "Paqueteria $TAG" --notes "APK compilada automaticamente desde el codigo fuente del repositorio."
+            gh release create "$TAG" "$APK" --title "Paqueteria $TAG" --notes "$NOTES"
           fi
