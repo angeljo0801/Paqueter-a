@@ -1,0 +1,85 @@
+name: Paqueteria repository audit
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "paqueteria/**"
+      - ".github/patch_*.py"
+      - ".github/build_paqueteria_canonical.py"
+      - ".github/workflows/**"
+  pull_request:
+    paths:
+      - "paqueteria/**"
+      - ".github/patch_*.py"
+      - ".github/build_paqueteria_canonical.py"
+      - ".github/workflows/**"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enforce one official Paqueteria APK pipeline
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          workflows = Path('.github/workflows')
+          allowed_full_build = workflows / 'release-apk.yml'
+          violations = []
+
+          for path in workflows.glob('*.yml'):
+              text = path.read_text()
+              if path == allowed_full_build:
+                  continue
+              # Agent apps are separate package identities and are allowed.
+              if path.name in {'build-agent-apk.yml', 'build-agente-polilla.yml', 'release-agentes-apk.yml'}:
+                  continue
+              # A second workflow that reconstructs the Paqueteria app and builds
+              # an APK is exactly the pattern that previously caused regressions.
+              if 'cp -R paqueteria/lib app/lib' in text and 'flutter build apk' in text:
+                  violations.append(path.name)
+
+          release = allowed_full_build.read_text()
+          required = [
+              'build_paqueteria_canonical.py',
+              '100000 + GITHUB_RUN_NUMBER',
+              'applicationId = "com.angelapps.paqueteria"',
+              'PAQUETERIA_KEYSTORE_B64',
+              'flutter analyze',
+          ]
+          for marker in required:
+              if marker not in release:
+                  violations.append(f'release-apk.yml missing: {marker}')
+
+          canonical = Path('.github/build_paqueteria_canonical.py').read_text()
+          feature_markers = [
+              'patch_paqueteria_recovery.py',
+              'patch_paqueteria_clients_local_first.py',
+              'patch_paqueteria_purchases_local_first.py',
+              'patch_order_numbers.py',
+              'patch_large_backup_restore.py',
+              'patch_settings_loading.py',
+              'patch_whatsbot_resume_sync.py',
+              'patch_whatsbot_manual_sync.py',
+              'patch_persistent_search_client_weight.py',
+              'Fotos obtenidas del correo',
+          ]
+          for marker in feature_markers:
+              if marker not in canonical:
+                  violations.append(f'canonical orchestrator missing: {marker}')
+
+          if violations:
+              print('Paqueteria repository policy violations:')
+              for item in violations:
+                  print(' -', item)
+              raise SystemExit(1)
+
+          print('Repository audit passed: one official Paqueteria release path, full feature set enforced.')
+          PY
