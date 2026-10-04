@@ -33,14 +33,17 @@ jobs:
           workflows = Path('.github/workflows')
           allowed_full_build = workflows / 'release-apk.yml'
           violations = []
+          excluded = {
+              'build-agent-apk.yml',
+              'build-agente-polilla.yml',
+              'release-agentes-apk.yml',
+              'paqueteria-repository-audit.yml',
+          }
 
           for path in workflows.glob('*.yml'):
+              if path == allowed_full_build or path.name in excluded:
+                  continue
               text = path.read_text()
-              if path == allowed_full_build:
-                  continue
-              # Agent apps are separate package identities and are allowed.
-              if path.name in {'build-agent-apk.yml', 'build-agente-polilla.yml', 'release-agentes-apk.yml'}:
-                  continue
               # A second workflow that reconstructs the Paqueteria app and builds
               # an APK is exactly the pattern that previously caused regressions.
               if 'cp -R paqueteria/lib app/lib' in text and 'flutter build apk' in text:
