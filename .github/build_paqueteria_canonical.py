@@ -18,6 +18,7 @@ PATCHES = [
     '.github/patch_persistent_search_client_weight.py',
     '.github/patch_multi_gmail_accounts_v2.py',
     '.github/patch_gmail_product_checklists.py',
+    '.github/patch_gmail_item_editor_ocr.py',
     '.github/patch_migration_json_merge.py',
 ]
 
@@ -40,6 +41,12 @@ CHECKS = {
         'Checklist de artículos del correo',
         'Seleccionar varias fotos',
         '_propagateReceivedGmailItemsToPurchase',
+        '_editGmailItem',
+        '_deleteGmailItem',
+        'hiddenGmailItemKeys',
+        'gmailOcrScannedUrls',
+        '_mergeItemsFromEmailImageOcr',
+        'OCR de imágenes del correo',
     ],
     'app/lib/purchases.dart': [
         '_refreshRemoteAfterLocalLoad',
@@ -63,6 +70,10 @@ CHECKS = {
         'mergeGmailDetectedItems',
         'selectGmailPhotosToRemove',
         'openGmailPhotoPreview',
+        'gmailDetectedItemLooksValid',
+        'gmailItemsFromOcrText',
+        'gmailReadTextFromImage',
+        'gmailImageWorthOcr',
     ],
     'app/lib/migration_merge.dart': [
         'class MigrationMergePage',
