@@ -16,6 +16,7 @@ PATCHES = [
     '.github/patch_whatsbot_resume_sync.py',
     '.github/patch_whatsbot_manual_sync.py',
     '.github/patch_persistent_search_client_weight.py',
+    '.github/patch_multi_gmail_accounts.py',
 ]
 
 for patch in PATCHES:
@@ -31,6 +32,15 @@ CHECKS = {
         'Toca una imagen para verla en grande',
         'Añadir foto del paquete',
         'hiddenEmailPhotoUrls',
+        'gmailSourceEmails',
+        'Encontrado en:',
+    ],
+    'app/lib/gmail_accounts.dart': [
+        'class GmailAccountsPage',
+        'Conectar otra cuenta Gmail',
+        '/api/gmail/accounts',
+        'Hacer principal',
+        'Volver a autorizar',
     ],
     'app/lib/whatsbot_sync.dart': [
         'recoverFromServerOnly',
@@ -53,10 +63,12 @@ CHECKS = {
     'app/lib/extras.dart': [
         'apiKeyLoaded',
         'Recuperar desde Railway (solo lectura)',
+        'Correos conectados',
     ],
     'app/lib/main.dart': [
         '_syncWhatsBotAfterResume',
         'readPersistentSearch',
+        "part 'gmail_accounts.dart';",
     ],
 }
 
