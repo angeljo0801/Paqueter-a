@@ -17,6 +17,7 @@ PATCHES = [
     '.github/patch_whatsbot_manual_sync.py',
     '.github/patch_persistent_search_client_weight.py',
     '.github/patch_multi_gmail_accounts_v2.py',
+    '.github/patch_migration_json_merge.py',
 ]
 
 for patch in PATCHES:
@@ -42,6 +43,14 @@ CHECKS = {
         'Hacer principal',
         'Volver a autorizar',
     ],
+    'app/lib/migration_merge.dart': [
+        'class MigrationMergePage',
+        'alas-cargo-finance-sync-v1',
+        'Combinar y recuperar datos',
+        'Réplicas evitadas',
+        'skippedLegacyPhotoRefs',
+        'remappedReferences',
+    ],
     'app/lib/whatsbot_sync.dart': [
         'recoverFromServerOnly',
         '_cachedApiKey',
@@ -59,6 +68,8 @@ CHECKS = {
     'app/lib/backup_service.dart': [
         'restoreFile(String path)',
         'materializeBackup',
+        'Recuperar datos desde JSON de Paquetería Migrador',
+        "import 'migration_merge.dart';",
     ],
     'app/lib/extras.dart': [
         'apiKeyLoaded',
