@@ -112,6 +112,8 @@ String inferCarrier(String tracking) {
   final t = tracking.trim().toUpperCase();
   if (t.startsWith('1Z')) return 'UPS';
   if (t.startsWith('TBA')) return 'Amazon';
+  if (t.startsWith('GFUS')) return 'GOFO';
+  if (t.startsWith('SPX') || t.startsWith('SPXPBI')) return 'SpeedX';
   if (RegExp(r'^(94|93|92|95)\d{18,22}$').hasMatch(t)) return 'USPS';
   if (RegExp(r'^\d{12,15}$').hasMatch(t)) return 'FedEx';
   if (RegExp(r'^\d{10}$').hasMatch(t)) return 'DHL';
@@ -248,11 +250,16 @@ class PackageEditPage extends StatefulWidget {
 
 class _PackageEditPageState extends State<PackageEditPage> {
   final tracking = TextEditingController(), weightUs = TextEditingController(), weightCu = TextEditingController(), billWeight = TextEditingController(), notes = TextEditingController();
+  final gmailStore = TextEditingController(), gmailOrder = TextEditingController(), gmailStatus = TextEditingController(), gmailEta = TextEditingController();
   List<Map<String, dynamic>> clients = [], purchases = [], recipients = [];
   String? clientId, purchaseId, recipientId;
   String carrier = 'Auto / Otro', status = 'Tracking creado';
   List<String> photoPaths = [];
-  bool loaded = false, syncing = false;
+  List<String> emailPhotoUrls = [];
+  List<Map<String, dynamic>> emailAttachmentImages = [];
+  final Set<String> hiddenEmailPhotoUrls = <String>{};
+  String gmailBackendUrl = '', gmailApiKey = '';
+  bool loaded = false, syncing = false, gmailLoading = false;
 
   @override
   void initState() { super.initState(); init(); }
@@ -271,6 +278,15 @@ class _PackageEditPageState extends State<PackageEditPage> {
     billWeight.text = '${widget.existing?['billWeight'] ?? ''}';
     notes.text = '${widget.existing?['notes'] ?? ''}';
     if (widget.existing != null) photoPaths = packagePhotoPaths(widget.existing!);
+    gmailStore.text = '${widget.existing?['gmailStore'] ?? widget.existing?['storeDetected'] ?? ''}';
+    gmailOrder.text = '${widget.existing?['gmailOrderNumber'] ?? widget.existing?['orderNumberRelated'] ?? ''}';
+    gmailStatus.text = '${widget.existing?['gmailStatus'] ?? widget.existing?['emailStatus'] ?? ''}';
+    gmailEta.text = '${widget.existing?['gmailEstimatedDelivery'] ?? widget.existing?['emailEstimatedDelivery'] ?? ''}';
+    emailPhotoUrls = dynList(widget.existing?['emailPhotoUrls']).map((e) => '$e'.trim()).where((e) => e.isNotEmpty).toList();
+    emailAttachmentImages = dynList(widget.existing?['emailAttachmentImages']).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+    hiddenEmailPhotoUrls.addAll(dynList(widget.existing?['hiddenEmailPhotoUrls']).map((e) => '$e'.trim()).where((e) => e.isNotEmpty));
+    gmailBackendUrl = await WhatsBotPurchaseSyncService.backendUrl();
+    gmailApiKey = await WhatsBotPurchaseSyncService.apiKey();
     if (mounted) setState(() => loaded = true);
   }
 
@@ -388,6 +404,201 @@ class _PackageEditPageState extends State<PackageEditPage> {
     );
   }
 
+
+  List<Map<String, dynamic>> _emailPhotoEntries() {
+    final out = <Map<String, dynamic>>[];
+    for (final raw in emailPhotoUrls) {
+      final url = raw.trim();
+      if (url.isEmpty || hiddenEmailPhotoUrls.contains(url)) continue;
+      out.add({'kind': 'remote', 'url': url, 'name': ''});
+    }
+    for (final row in emailAttachmentImages) {
+      final url = '${row['url'] ?? ''}'.trim();
+      if (url.isEmpty || hiddenEmailPhotoUrls.contains(url)) continue;
+      if (out.any((e) => '${e['url']}' == url)) continue;
+      out.add({'kind': 'attachment', 'url': url, 'name': '${row['name'] ?? ''}'});
+    }
+    return out;
+  }
+
+  String _fullEmailPhotoUrl(Map<String, dynamic> image) {
+    final raw = '${image['url'] ?? ''}'.trim();
+    if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+    final base = gmailBackendUrl.replaceAll(RegExp(r'/$'), '');
+    return raw.startsWith('/') ? '$base$raw' : '$base/$raw';
+  }
+
+  Map<String, String>? _emailPhotoHeaders(Map<String, dynamic> image) {
+    final raw = '${image['url'] ?? ''}'.trim();
+    final isBackend = raw.startsWith('/') ||
+        (gmailBackendUrl.isNotEmpty && raw.startsWith(gmailBackendUrl));
+    if (!isBackend || gmailApiKey.isEmpty) return null;
+    return {'x-api-key': gmailApiKey};
+  }
+
+  Future<void> reconstructFromGmail() async {
+    final track = tracking.text.trim();
+    final order = gmailOrder.text.trim();
+    if (track.isEmpty && order.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Escribe un tracking o número de orden primero.')),
+      );
+      return;
+    }
+    gmailBackendUrl = await WhatsBotPurchaseSyncService.backendUrl();
+    gmailApiKey = await WhatsBotPurchaseSyncService.apiKey();
+    if (gmailApiKey.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Falta la API key del servidor de WhatsBot en Configuración.')),
+      );
+      return;
+    }
+    setState(() => gmailLoading = true);
+    try {
+      final uri = Uri.parse('$gmailBackendUrl/api/gmail/reconstruct').replace(
+        queryParameters: track.isNotEmpty
+            ? {'tracking': track}
+            : {'order_number': order},
+      );
+      final response = await http.get(
+        uri,
+        headers: {'x-api-key': gmailApiKey},
+      ).timeout(const Duration(seconds: 75));
+      if (response.statusCode != 200) {
+        String detail = response.body;
+        try {
+          final decoded = jsonDecode(response.body);
+          if (decoded is Map && decoded['detail'] != null) detail = '${decoded['detail']}';
+        } catch (_) {}
+        throw Exception(detail);
+      }
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map) throw Exception('Respuesta inválida del servidor.');
+      final data = Map<String, dynamic>.from(decoded);
+      if (data['found'] != true) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No encontré correos para ese tracking u orden.')),
+          );
+        }
+        return;
+      }
+      if (!mounted) return;
+      setState(() {
+        gmailStore.text = '${data['store'] ?? ''}'.trim();
+        gmailOrder.text = '${data['orderNumber'] ?? gmailOrder.text}'.trim();
+        gmailStatus.text = '${data['status'] ?? ''}'.trim();
+        gmailEta.text = '${data['estimatedDelivery'] ?? ''}'.trim();
+
+        final detectedCarrier = '${data['carrier'] ?? ''}'.trim();
+        if (detectedCarrier.isNotEmpty &&
+            (carrier == 'Auto / Otro' || carrier.trim().isEmpty)) {
+          carrier = detectedCarrier;
+        }
+
+        for (final value in dynList(data['emailPhotoUrls'])) {
+          final url = '$value'.trim();
+          if (url.isNotEmpty &&
+              !hiddenEmailPhotoUrls.contains(url) &&
+              !emailPhotoUrls.contains(url)) {
+            emailPhotoUrls.add(url);
+          }
+        }
+        for (final value in dynList(data['emailAttachmentImages'])) {
+          if (value is! Map) continue;
+          final row = Map<String, dynamic>.from(value);
+          final url = '${row['url'] ?? ''}'.trim();
+          if (url.isEmpty || hiddenEmailPhotoUrls.contains(url)) continue;
+          if (!emailAttachmentImages.any((e) => '${e['url']}' == url)) {
+            emailAttachmentImages.add(row);
+          }
+        }
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Compra reconstruida desde Gmail${gmailStore.text.isEmpty ? '' : ' · ${gmailStore.text}'}')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudo reconstruir desde Gmail: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => gmailLoading = false);
+    }
+  }
+
+  Future<void> openEmailPhoto(Map<String, dynamic> image) async {
+    final url = _fullEmailPhotoUrl(image);
+    if (url.isEmpty) return;
+    await showDialog<void>(
+      context: context,
+      builder: (_) => Dialog(
+        insetPadding: EdgeInsets.zero,
+        backgroundColor: Colors.black,
+        child: SafeArea(
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: InteractiveViewer(
+                  minScale: 0.7,
+                  maxScale: 6,
+                  child: Center(
+                    child: Image.network(
+                      url,
+                      headers: _emailPhotoHeaders(image),
+                      fit: BoxFit.contain,
+                      loadingBuilder: (_, child, progress) => progress == null
+                          ? child
+                          : const Center(child: CircularProgressIndicator()),
+                      errorBuilder: (_, __, ___) => const Center(
+                        child: Icon(Icons.broken_image_outlined, size: 64),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                right: 8,
+                top: 8,
+                child: IconButton.filled(
+                  tooltip: 'Cerrar',
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> removeEmailPhoto(Map<String, dynamic> image) async {
+    final raw = '${image['url'] ?? ''}'.trim();
+    if (raw.isEmpty) return;
+    final remove = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Quitar foto'),
+        content: const Text('¿Quieres quitar esta imagen de este paquete? No se borrará el correo original.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Quitar')),
+        ],
+      ),
+    );
+    if (remove != true || !mounted) return;
+    setState(() {
+      hiddenEmailPhotoUrls.add(raw);
+      emailPhotoUrls.removeWhere((e) => e.trim() == raw);
+      emailAttachmentImages.removeWhere((e) => '${e['url'] ?? ''}'.trim() == raw);
+    });
+  }
+
   Future<void> save() async {
     final code = tracking.text.trim();
     if (code.isEmpty || clientId == null) {
@@ -412,6 +623,13 @@ class _PackageEditPageState extends State<PackageEditPage> {
       'billWeight': number(billWeight.text),
       'status': status,
       'notes': notes.text.trim(),
+      'gmailStore': gmailStore.text.trim(),
+      'gmailOrderNumber': gmailOrder.text.trim(),
+      'gmailStatus': gmailStatus.text.trim(),
+      'gmailEstimatedDelivery': gmailEta.text.trim(),
+      'emailPhotoUrls': emailPhotoUrls,
+      'emailAttachmentImages': emailAttachmentImages,
+      'hiddenEmailPhotoUrls': hiddenEmailPhotoUrls.toList(),
       'photoPaths': photoPaths,
       'photoPath': photoPaths.isEmpty ? '' : photoPaths.first,
       'receivedAt': status == 'Recibido' ? (widget.existing?['receivedAt'] ?? DateTime.now().toIso8601String()) : widget.existing?['receivedAt'],
@@ -431,6 +649,7 @@ class _PackageEditPageState extends State<PackageEditPage> {
     final remote = '${widget.existing?['courierStatusEs'] ?? ''}'.trim();
     final eta = '${widget.existing?['estimatedDelivery'] ?? ''}'.trim();
     final details = widget.existing?['courierDetails'] is List ? (widget.existing!['courierDetails'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList() : <Map<String, dynamic>>[];
+    final emailImages = _emailPhotoEntries();
     return Scaffold(
       appBar: AppBar(title: Text(widget.existing == null ? 'Nuevo paquete' : 'Editar paquete'), actions: [if (tracking.text.trim().isNotEmpty) IconButton(tooltip: 'Rastrear en courier', onPressed: openTracking, icon: const Icon(Icons.local_shipping))]),
       body: ListView(padding: const EdgeInsets.all(16), children: [
@@ -452,7 +671,26 @@ class _PackageEditPageState extends State<PackageEditPage> {
           ),
         ),
         const SizedBox(height: 12),
-        _drop('Courier', carrier, ['Auto / Otro', 'UPS', 'FedEx', 'USPS', 'DHL', 'Amazon'].map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(), (v) => setState(() => carrier = v ?? carrier)),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.tonalIcon(
+            onPressed: gmailLoading ? null : reconstructFromGmail,
+            icon: gmailLoading
+                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.manage_search),
+            label: const Text('Buscar tracking en Gmail y reconstruir compra'),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(controller: gmailStore, decoration: const InputDecoration(labelText: 'Tienda detectada / tienda')),
+        const SizedBox(height: 12),
+        TextField(controller: gmailOrder, decoration: const InputDecoration(labelText: 'Número de orden relacionado')),
+        const SizedBox(height: 12),
+        TextField(controller: gmailStatus, decoration: const InputDecoration(labelText: 'Estado obtenido del correo')),
+        const SizedBox(height: 12),
+        TextField(controller: gmailEta, decoration: const InputDecoration(labelText: 'Entrega estimada obtenida del correo')),
+        const SizedBox(height: 12),
+        _drop('Courier / agencia', carrier, ['Auto / Otro', 'UPS', 'FedEx', 'USPS', 'DHL', 'Amazon', 'GOFO', 'SpeedX'].map((x) => DropdownMenuItem(value: x, child: Text(x))).toList(), (v) => setState(() => carrier = v ?? carrier)),
         const SizedBox(height: 12),
         _drop('Cliente *', clientId, clients.map((c) => DropdownMenuItem(value: '${c['id']}', child: Text('${c['name']}'))).toList(), (v) => setState(() { clientId = v; purchaseId = null; recipientId = null; })),
         const SizedBox(height: 12),
@@ -475,7 +713,7 @@ class _PackageEditPageState extends State<PackageEditPage> {
         OutlinedButton.icon(
           onPressed: pickPackagePhotos,
           icon: const Icon(Icons.add_a_photo_outlined),
-          label: Text(photoPaths.isEmpty ? 'Añadir fotos del paquete' : 'Añadir más fotos'),
+          label: Text(photoPaths.isEmpty ? 'Añadir foto del paquete' : 'Añadir otra foto del paquete'),
         ),
         if (photoPaths.isNotEmpty) ...[
           const SizedBox(height: 8),
@@ -516,6 +754,80 @@ class _PackageEditPageState extends State<PackageEditPage> {
                   ],
                 );
               },
+            ),
+          ),
+        ],
+
+        if (emailImages.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(children: [
+                    Icon(Icons.email_outlined, size: 19),
+                    SizedBox(width: 8),
+                    Text('Fotos obtenidas del correo', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ]),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Se mantienen separadas de las fotos manuales de la compra. '
+                    'Toca una imagen para verla en grande y usa × para quitarla.',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                  const SizedBox(height: 10),
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      crossAxisSpacing: 7,
+                      mainAxisSpacing: 7,
+                      childAspectRatio: 1,
+                    ),
+                    itemCount: emailImages.length,
+                    itemBuilder: (_, i) {
+                      final image = emailImages[i];
+                      return Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Material(
+                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(9),
+                            clipBehavior: Clip.antiAlias,
+                            child: InkWell(
+                              onTap: () => openEmailPhoto(image),
+                              child: Image.network(
+                                _fullEmailPhotoUrl(image),
+                                headers: _emailPhotoHeaders(image),
+                                fit: BoxFit.cover,
+                                loadingBuilder: (_, child, progress) => progress == null
+                                    ? child
+                                    : const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                errorBuilder: (_, __, ___) => const Center(
+                                  child: Icon(Icons.broken_image_outlined),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            right: 2,
+                            top: 2,
+                            child: IconButton.filled(
+                              visualDensity: VisualDensity.compact,
+                              tooltip: 'Quitar foto',
+                              onPressed: () => removeEmailPhoto(image),
+                              icon: const Icon(Icons.close, size: 17),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
           ),
         ],
