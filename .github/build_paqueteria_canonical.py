@@ -16,7 +16,7 @@ PATCHES = [
     '.github/patch_whatsbot_resume_sync.py',
     '.github/patch_whatsbot_manual_sync.py',
     '.github/patch_persistent_search_client_weight.py',
-    '.github/patch_multi_gmail_accounts.py',
+    '.github/patch_multi_gmail_accounts_v2.py',
 ]
 
 for patch in PATCHES:
