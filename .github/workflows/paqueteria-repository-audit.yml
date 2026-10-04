@@ -44,8 +44,6 @@ jobs:
               if path == allowed_full_build or path.name in excluded:
                   continue
               text = path.read_text()
-              # A second workflow that reconstructs the Paqueteria app and builds
-              # an APK is exactly the pattern that previously caused regressions.
               if 'cp -R paqueteria/lib app/lib' in text and 'flutter build apk' in text:
                   violations.append(path.name)
 
@@ -73,9 +71,13 @@ jobs:
               'patch_whatsbot_manual_sync.py',
               'patch_persistent_search_client_weight.py',
               'patch_multi_gmail_accounts_v2.py',
+              'patch_gmail_product_checklists.py',
               'patch_migration_json_merge.py',
               'Fotos obtenidas del correo',
               'GmailAccountsPage',
+              'GmailPurchaseLinkService',
+              'Vincular con correo usando número de orden',
+              'Checklist de artículos del correo',
               'MigrationMergePage',
           ]
           for marker in feature_markers:
@@ -88,5 +90,35 @@ jobs:
                   print(' -', item)
               raise SystemExit(1)
 
-          print('Repository audit passed: one official Paqueteria release path, full feature set enforced.')
+          print('Repository policy passed: one official Paqueteria release path and required feature patches are enforced.')
           PY
+
+      - name: Syntax-check all Paqueteria patch scripts
+        run: python3 -m py_compile .github/build_paqueteria_canonical.py .github/patch_*.py
+
+      - name: Setup Flutter for canonical source validation
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Reconstruct canonical source exactly like the release pipeline
+        shell: bash
+        run: |
+          flutter create --platforms=android --org com.angelapps --project-name paqueteria app
+          rm -rf app/lib app/test
+          cp -R paqueteria/lib app/lib
+          cp paqueteria/pubspec.yaml app/pubspec.yaml
+          mkdir -p app/assets
+          # Analysis only needs the declared asset path to exist. The release
+          # workflow generates the real PNG from the canonical SVG.
+          touch app/assets/icon.png
+          python3 .github/build_paqueteria_canonical.py
+
+      - name: Resolve dependencies
+        working-directory: app
+        run: flutter pub get
+
+      - name: Analyze complete canonical source
+        working-directory: app
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings lib

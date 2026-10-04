@@ -17,6 +17,7 @@ PATCHES = [
     '.github/patch_whatsbot_manual_sync.py',
     '.github/patch_persistent_search_client_weight.py',
     '.github/patch_multi_gmail_accounts_v2.py',
+    '.github/patch_gmail_product_checklists.py',
     '.github/patch_migration_json_merge.py',
 ]
 
@@ -35,6 +36,20 @@ CHECKS = {
         'hiddenEmailPhotoUrls',
         'gmailSourceEmails',
         'Encontrado en:',
+        'gmailItems',
+        'Checklist de artículos del correo',
+        'Seleccionar varias fotos',
+        '_propagateReceivedGmailItemsToPurchase',
+    ],
+    'app/lib/purchases.dart': [
+        '_refreshRemoteAfterLocalLoad',
+        'purchaseOrderNumbers(',
+        'Vincular con correo usando número de orden',
+        'Checklist de artículos',
+        'gmailPurchasePhotoUrls',
+        'gmailLinkedOrderNumbers',
+        '_removeMultiplePurchaseEmailPhotos',
+        'Marca el cuadrito cuando el artículo haya llegado.',
     ],
     'app/lib/gmail_accounts.dart': [
         'class GmailAccountsPage',
@@ -42,6 +57,12 @@ CHECKS = {
         '/api/gmail/accounts',
         'Hacer principal',
         'Volver a autorizar',
+    ],
+    'app/lib/gmail_purchase_link.dart': [
+        'class GmailPurchaseLinkService',
+        'mergeGmailDetectedItems',
+        'selectGmailPhotosToRemove',
+        'openGmailPhotoPreview',
     ],
     'app/lib/migration_merge.dart': [
         'class MigrationMergePage',
@@ -61,10 +82,6 @@ CHECKS = {
         "readPersistentSearch('clients')",
         'Libras:',
     ],
-    'app/lib/purchases.dart': [
-        '_refreshRemoteAfterLocalLoad',
-        'purchaseOrderNumbers(',
-    ],
     'app/lib/backup_service.dart': [
         'restoreFile(String path)',
         'materializeBackup',
@@ -80,6 +97,7 @@ CHECKS = {
         '_syncWhatsBotAfterResume',
         'readPersistentSearch',
         "part 'gmail_accounts.dart';",
+        "part 'gmail_purchase_link.dart';",
     ],
 }
 
