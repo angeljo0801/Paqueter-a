@@ -19,6 +19,7 @@ PATCHES = [
     '.github/patch_multi_gmail_accounts_v2.py',
     '.github/patch_gmail_product_checklists.py',
     '.github/patch_gmail_item_editor_ocr.py',
+    '.github/patch_gmail_photo_gallery.py',
     '.github/patch_migration_json_merge.py',
 ]
 
@@ -47,6 +48,7 @@ CHECKS = {
         'gmailOcrScannedUrls',
         '_mergeItemsFromEmailImageOcr',
         'OCR de imágenes del correo',
+        'openGmailPhotoGallery',
     ],
     'app/lib/purchases.dart': [
         '_refreshRemoteAfterLocalLoad',
@@ -57,6 +59,7 @@ CHECKS = {
         'gmailLinkedOrderNumbers',
         '_removeMultiplePurchaseEmailPhotos',
         'Marca el cuadrito cuando el artículo haya llegado.',
+        'openGmailPhotoGallery',
     ],
     'app/lib/gmail_accounts.dart': [
         'class GmailAccountsPage',
@@ -70,6 +73,9 @@ CHECKS = {
         'mergeGmailDetectedItems',
         'selectGmailPhotosToRemove',
         'openGmailPhotoPreview',
+        'openGmailPhotoGallery',
+        'Desliza horizontalmente',
+        'Borrar esta foto',
         'gmailDetectedItemLooksValid',
         'gmailItemsFromOcrText',
         'gmailReadTextFromImage',
