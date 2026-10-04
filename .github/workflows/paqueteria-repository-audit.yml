@@ -73,8 +73,10 @@ jobs:
               'patch_whatsbot_manual_sync.py',
               'patch_persistent_search_client_weight.py',
               'patch_multi_gmail_accounts_v2.py',
+              'patch_migration_json_merge.py',
               'Fotos obtenidas del correo',
               'GmailAccountsPage',
+              'MigrationMergePage',
           ]
           for marker in feature_markers:
               if marker not in canonical:
