@@ -20,6 +20,7 @@ PATCHES = [
     '.github/patch_gmail_product_checklists.py',
     '.github/patch_gmail_item_editor_ocr.py',
     '.github/patch_gmail_photo_gallery.py',
+    '.github/patch_gmail_link_badges.py',
     '.github/patch_migration_json_merge.py',
 ]
 
@@ -49,6 +50,8 @@ CHECKS = {
         '_mergeItemsFromEmailImageOcr',
         'OCR de imágenes del correo',
         'openGmailPhotoGallery',
+        'gmailRecordIsLinked(p)',
+        'gmailLinkedBadge(context)',
     ],
     'app/lib/purchases.dart': [
         '_refreshRemoteAfterLocalLoad',
@@ -60,6 +63,8 @@ CHECKS = {
         '_removeMultiplePurchaseEmailPhotos',
         'Marca el cuadrito cuando el artículo haya llegado.',
         'openGmailPhotoGallery',
+        'gmailRecordIsLinked(p)',
+        'gmailLinkedBadge(context)',
     ],
     'app/lib/gmail_accounts.dart': [
         'class GmailAccountsPage',
@@ -80,6 +85,9 @@ CHECKS = {
         'gmailItemsFromOcrText',
         'gmailReadTextFromImage',
         'gmailImageWorthOcr',
+        'bool gmailRecordIsLinked(Map<String, dynamic> record)',
+        'Widget gmailLinkedBadge(BuildContext context)',
+        'Ya vinculado / reconstruido con Gmail',
     ],
     'app/lib/migration_merge.dart': [
         'class MigrationMergePage',
@@ -98,6 +106,8 @@ CHECKS = {
         '_refreshRemoteAfterLocalLoad',
         "readPersistentSearch('clients')",
         'Libras:',
+        'gmailRecordIsLinked(p)',
+        'gmailLinkedBadge(context)',
     ],
     'app/lib/backup_service.dart': [
         'restoreFile(String path)',
