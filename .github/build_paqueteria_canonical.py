@@ -27,6 +27,7 @@ PATCHES = [
     '.github/patch_gmail_temu_url_fix_v4.py',
     '.github/patch_gmail_product_photo_filter_v5_background.py',
     '.github/patch_gmail_product_photo_filter_v6_nonproducts.py',
+    '.github/patch_gmail_runtime_stability_v7.py',
     '.github/patch_gmail_recover_discarded_photos.py',
     '.github/patch_fast_tabs_cache.py',
     '.github/patch_migration_json_merge.py',
@@ -67,6 +68,8 @@ CHECKS = {
         'manuallyAcceptedGmailPhotoUrls',
         'Ver imágenes descartadas',
         'GmailBackgroundSearch.reconstruct(',
+        "data['_backgroundPending'] == true",
+        'GmailBackgroundSearch.friendlyError(e)',
         'la búsqueda seguirá en segundo plano',
         "PageStorageKey<String>('packages-main-list')",
     ],
@@ -88,6 +91,7 @@ CHECKS = {
         'gmailPurchaseManuallyAcceptedPhotoUrls',
         'manuallyAcceptedGmailPhotoUrls',
         'Ver imágenes descartadas',
+        'GmailBackgroundSearch.friendlyError(e)',
     ],
     'app/lib/gmail_accounts.dart': [
         'class GmailAccountsPage',
@@ -133,8 +137,12 @@ CHECKS = {
     'app/lib/background_sync.dart': [
         "const String gmailBackgroundTask = 'gmailBackgroundReconstruct';",
         'class GmailBackgroundSearch',
+        'static Future<void> ensureInitialized()',
+        'static String friendlyError(Object error)',
+        'static Future<Map<String, dynamic>> _requestWithRetry(',
+        'initialDelay: const Duration(seconds: 8)',
+        "'_backgroundPending': true",
         "tag: 'gmail-background-search'",
-        'La búsqueda seguirá intentando en segundo plano.',
     ],
     'app/lib/migration_merge.dart': [
         'class MigrationMergePage',
@@ -176,6 +184,7 @@ CHECKS = {
         'body: IndexedStack(',
         '_listCache',
         'if (!mounted || changed <= 0) return;',
+        'await BackgroundCourierSync.initializeAndSchedule();',
     ],
 }
 
