@@ -25,6 +25,7 @@ PATCHES = [
     '.github/patch_gmail_product_photo_filter_v2.py',
     '.github/patch_gmail_product_photo_filter_v3.py',
     '.github/patch_gmail_temu_url_fix_v4.py',
+    '.github/patch_gmail_product_photo_filter_v5_background.py',
     '.github/patch_gmail_recover_discarded_photos.py',
     '.github/patch_fast_tabs_cache.py',
     '.github/patch_migration_json_merge.py',
@@ -64,6 +65,8 @@ CHECKS = {
         'gmailManuallyAcceptedPhotoUrls',
         'manuallyAcceptedGmailPhotoUrls',
         'Ver imágenes descartadas',
+        'GmailBackgroundSearch.reconstruct(',
+        'la búsqueda seguirá en segundo plano',
         "PageStorageKey<String>('packages-main-list')",
     ],
     'app/lib/purchases.dart': [
@@ -118,6 +121,15 @@ CHECKS = {
         'confirmed_product',
         'manual_product',
         'gmail_product_photos',
+        'decimalMoneyCount',
+        'compactOrderRow',
+        'GmailBackgroundSearch.reconstruct(',
+    ],
+    'app/lib/background_sync.dart': [
+        "const String gmailBackgroundTask = 'gmailBackgroundReconstruct';",
+        'class GmailBackgroundSearch',
+        "tag: 'gmail-background-search'",
+        'La búsqueda seguirá intentando en segundo plano.',
     ],
     'app/lib/migration_merge.dart': [
         'class MigrationMergePage',
