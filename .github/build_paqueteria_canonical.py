@@ -30,6 +30,8 @@ PATCHES = [
     '.github/patch_gmail_runtime_stability_v7.py',
     '.github/patch_gmail_background_resume_v8.py',
     '.github/patch_gmail_background_durable_v9.py',
+    '.github/patch_gmail_background_photos_and_catalog_v10.py',
+    '.github/patch_gmail_nonproduct_banners_v11.py',
     '.github/patch_gmail_recover_discarded_photos.py',
     '.github/patch_fast_tabs_cache.py',
     '.github/patch_migration_json_merge.py',
@@ -81,6 +83,7 @@ CHECKS = {
         '_persistRecoveredGmailSnapshot',
         'autoAcknowledge: false',
         'GmailBackgroundSearch.acknowledgeFinished(',
+        'spanishShipmentUi',
     ],
     'app/lib/purchases.dart': [
         '_refreshRemoteAfterLocalLoad',
