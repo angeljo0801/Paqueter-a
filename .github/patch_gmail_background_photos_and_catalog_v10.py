@@ -14,6 +14,7 @@ def replace_once(text: str, old: str, new: str, label: str) -> str:
 # 2) Temu storefront/listing cards (Halloween example) can contain x3 variant
 #    labels. Those labels look like order quantity signals, so older code skipped
 #    the catalog-card rejection even when the same image had sale/listing cues.
+# Canonical v2.6.15 build marker.
 
 # ---------------------------------------------------------------------------
 # Hard reject catalog/storefront cards even when xN makes orderItemSignals true.
