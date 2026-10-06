@@ -85,7 +85,6 @@ CHECKS = {
         'Only mark the background result as consumed after the final accepted',
         'autoAcknowledge: false',
         'GmailBackgroundSearch.acknowledgeFinished(',
-        'spanishShipmentUi',
     ],
     'app/lib/purchases.dart': [
         '_refreshRemoteAfterLocalLoad',
@@ -149,6 +148,7 @@ CHECKS = {
         'variantQuantityCount',
         'multiVariantGrid',
         'multiPieceListing',
+        'spanishShipmentUi',
         'GmailBackgroundSearch.reconstruct(',
     ],
     'app/lib/background_sync.dart': [
