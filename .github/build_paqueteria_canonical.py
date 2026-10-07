@@ -43,6 +43,7 @@ PATCHES = [
     '.github/patch_gmail_client_invite_ui_v19.py',
     '.github/patch_gmail_client_scope_v20.py',
     '.github/patch_gmail_foreground_survival_v21.py',
+    '.github/patch_gmail_terminal_not_found_v22.py',
     '.github/patch_fast_tabs_cache.py',
     '.github/patch_migration_json_merge.py',
 ]
@@ -99,6 +100,7 @@ CHECKS = {
         'GmailForegroundExecution.canProcess',
         'GmailBackgroundSearch.acknowledgeFinished(',
         'Búsqueda de Gmail iniciada',
+        'La búsqueda terminó.',
     ],
     'app/lib/purchases.dart': [
         '_refreshRemoteAfterLocalLoad',
