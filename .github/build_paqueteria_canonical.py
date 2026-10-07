@@ -91,6 +91,7 @@ CHECKS = {
         'Reconstrucción terminada en segundo plano',
         'autoAcknowledge: false',
         'GmailBackgroundSearch.acknowledgeFinished(',
+        'Búsqueda de Gmail iniciada',
     ],
     'app/lib/purchases.dart': [
         '_refreshRemoteAfterLocalLoad',
@@ -167,7 +168,6 @@ CHECKS = {
         'static Future<void> acknowledgeFinished({',
         'bool autoAcknowledge = true',
         'bool consume = true',
-        'initialDelay: const Duration(seconds: 8)',
         "'_backgroundPending': true",
         "tag: 'gmail-background-search'",
         'static Future<Map<String, dynamic>> _requestServerJob({',
@@ -175,7 +175,6 @@ CHECKS = {
         'gmailBackgroundPhotoUpgrade',
         'upgradeOriginalPhotos(',
         '_startServerJobNow(',
-        'Búsqueda de Gmail iniciada',
     ],
     'app/lib/migration_merge.dart': [
         'class MigrationMergePage',
