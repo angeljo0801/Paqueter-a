@@ -38,6 +38,7 @@ PATCHES = [
     '.github/patch_gmail_server_background_pipeline_v14.py',
     '.github/patch_gmail_fast_background_v15.py',
     '.github/patch_gmail_instant_start_v16.py',
+    '.github/patch_gmail_english_banners_v17.py',
     '.github/patch_fast_tabs_cache.py',
     '.github/patch_migration_json_merge.py',
 ]
@@ -92,6 +93,8 @@ CHECKS = {
         'autoAcknowledge: false',
         'GmailBackgroundSearch.acknowledgeFinished(',
         'Búsqueda de Gmail iniciada',
+        'englishShipmentUi',
+        'englishLoyaltyUi',
     ],
     'app/lib/purchases.dart': [
         '_refreshRemoteAfterLocalLoad',
