@@ -33,8 +33,8 @@ PATCHES = [
     '.github/patch_gmail_background_photos_and_catalog_v10.py',
     '.github/patch_gmail_nonproduct_banners_v11.py',
     '.github/patch_gmail_photo_persistence_order_v12.py',
-    '.github/patch_gmail_background_defer_photo_processing_v13.py',
     '.github/patch_gmail_recover_discarded_photos.py',
+    '.github/patch_gmail_background_defer_photo_processing_v13.py',
     '.github/patch_fast_tabs_cache.py',
     '.github/patch_migration_json_merge.py',
 ]
