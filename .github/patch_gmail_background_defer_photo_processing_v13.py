@@ -94,19 +94,25 @@ post_filter_new = r'''      await _mergeItemsFromEmailImageOcr();
 s = replace_once(s, post_filter_old, post_filter_new, 'never acknowledge photos processed while paused')
 
 # If photo preparation itself returns after the app was minimized, don't replace
-# the visible photo collections with an empty/partial result.
-filter_apply_old = r'''    final offline = result['offlinePaths'];
-    if (!mounted) return;
-    setState(() {
-'''
-filter_apply_new = r'''    final offline = result['offlinePaths'];
-    if (!mounted ||
-        WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
-      return;
-    }
-    setState(() {
-'''
-s = replace_once(s, filter_apply_old, filter_apply_new, 'do not apply photo filter result while paused')
+# the visible photo collections with an empty/partial result. Do this inside the
+# package smart-filter method so it remains compatible with the manual
+# "recover discarded photo" patch, which inserts code before the mounted guard.
+filter_start = s.find('  Future<void> _smartFilterAndCacheGmailPhotos() async {')
+filter_end = s.find('  Future<void> _showRejectedGmailPhotos() async {', filter_start)
+if filter_start < 0 or filter_end < 0:
+    raise SystemExit('No se encontró _smartFilterAndCacheGmailPhotos para v13')
+filter_func = s[filter_start:filter_end]
+filter_func = replace_once(
+    filter_func,
+    "    if (!mounted) return;\n    setState(() {\n",
+    "    if (!mounted ||\n"
+    "        WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {\n"
+    "      return;\n"
+    "    }\n"
+    "    setState(() {\n",
+    'do not apply photo filter result while paused',
+)
+s = s[:filter_start] + filter_func + s[filter_end:]
 
 p.write_text(s)
 print('Gmail v13 applied: background lookup keeps raw result durable; photo OCR/cache/persistence waits until app resumes.')
