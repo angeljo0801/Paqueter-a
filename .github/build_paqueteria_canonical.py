@@ -93,8 +93,6 @@ CHECKS = {
         'autoAcknowledge: false',
         'GmailBackgroundSearch.acknowledgeFinished(',
         'Búsqueda de Gmail iniciada',
-        'englishShipmentUi',
-        'englishLoyaltyUi',
     ],
     'app/lib/purchases.dart': [
         '_refreshRemoteAfterLocalLoad',
@@ -159,6 +157,8 @@ CHECKS = {
         'multiVariantGrid',
         'multiPieceListing',
         'spanishShipmentUi',
+        'englishShipmentUi',
+        'englishLoyaltyUi',
         'GmailBackgroundSearch.reconstruct(',
     ],
     'app/lib/background_sync.dart': [
