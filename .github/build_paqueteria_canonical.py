@@ -39,6 +39,7 @@ PATCHES = [
     '.github/patch_gmail_fast_background_v15.py',
     '.github/patch_gmail_instant_start_v16.py',
     '.github/patch_gmail_english_banners_v17.py',
+    '.github/patch_gmail_minimize_survival_v18.py',
     '.github/patch_fast_tabs_cache.py',
     '.github/patch_migration_json_merge.py',
 ]
@@ -178,6 +179,9 @@ CHECKS = {
         'gmailBackgroundPhotoUpgrade',
         'upgradeOriginalPhotos(',
         '_startServerJobNow(',
+        'gmailBackgroundCollectTask',
+        'collectServerJob(',
+        'gmail-background-collector',
     ],
     'app/lib/migration_merge.dart': [
         'class MigrationMergePage',
