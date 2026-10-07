@@ -64,7 +64,7 @@ if old_delay in bs:
 # before asking Android to enqueue its background safety net.
 registration_anchor = r'''      await prefs.remove(_resultKey(slot));
       await prefs.remove(_errorKey(slot));
-      var backgroundScheduled = false;
+      if (backgroundAvailable) {
 '''
 registration_new = r'''      await prefs.remove(_resultKey(slot));
       await prefs.remove(_errorKey(slot));
@@ -83,7 +83,7 @@ registration_new = r'''      await prefs.remove(_resultKey(slot));
         // WorkManager/direct retry below remains the safety net.
       }
 
-      var backgroundScheduled = false;
+      if (backgroundAvailable) {
 '''
 bs = replace_once(
     bs,
