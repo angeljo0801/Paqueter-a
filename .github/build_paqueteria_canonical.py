@@ -36,6 +36,7 @@ PATCHES = [
     '.github/patch_gmail_recover_discarded_photos.py',
     '.github/patch_gmail_background_defer_photo_processing_v13.py',
     '.github/patch_gmail_server_background_pipeline_v14.py',
+    '.github/patch_gmail_fast_background_v15.py',
     '.github/patch_fast_tabs_cache.py',
     '.github/patch_migration_json_merge.py',
 ]
@@ -170,6 +171,8 @@ CHECKS = {
         "tag: 'gmail-background-search'",
         'static Future<Map<String, dynamic>> _requestServerJob({',
         '_processPackagePhotosInBackground(',
+        'gmailBackgroundPhotoUpgrade',
+        'upgradeOriginalPhotos(',
     ],
     'app/lib/migration_merge.dart': [
         'class MigrationMergePage',
