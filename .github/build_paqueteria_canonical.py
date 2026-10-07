@@ -40,6 +40,8 @@ PATCHES = [
     '.github/patch_gmail_instant_start_v16.py',
     '.github/patch_gmail_english_banners_v17.py',
     '.github/patch_gmail_minimize_survival_v18.py',
+    '.github/patch_gmail_client_invite_ui_v19.py',
+    '.github/patch_gmail_client_scope_v20.py',
     '.github/patch_fast_tabs_cache.py',
     '.github/patch_migration_json_merge.py',
 ]
@@ -92,6 +94,7 @@ CHECKS = {
         'If Android paused the app while Gmail was searching',
         'Reconstrucción terminada en segundo plano',
         'autoAcknowledge: false',
+        "clientId: clientId ?? ''",
         'GmailBackgroundSearch.acknowledgeFinished(',
         'Búsqueda de Gmail iniciada',
     ],
@@ -118,6 +121,9 @@ CHECKS = {
     'app/lib/gmail_accounts.dart': [
         'class GmailAccountsPage',
         'Conectar otra cuenta Gmail',
+        'Conectar correo de cliente',
+        'QrImageView',
+        '_inviteClient(',
         '/api/gmail/accounts',
         'Hacer principal',
         'Volver a autorizar',
@@ -182,6 +188,7 @@ CHECKS = {
         'gmailBackgroundCollectTask',
         'collectServerJob(',
         'gmail-background-collector',
+        "'client_id': clientId.trim()",
     ],
     'app/lib/migration_merge.dart': [
         'class MigrationMergePage',
