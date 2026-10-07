@@ -35,6 +35,7 @@ PATCHES = [
     '.github/patch_gmail_photo_persistence_order_v12.py',
     '.github/patch_gmail_recover_discarded_photos.py',
     '.github/patch_gmail_background_defer_photo_processing_v13.py',
+    '.github/patch_gmail_server_background_pipeline_v14.py',
     '.github/patch_fast_tabs_cache.py',
     '.github/patch_migration_json_merge.py',
 ]
@@ -85,6 +86,7 @@ CHECKS = {
         '_persistRecoveredGmailSnapshot',
         'Only mark the background result as consumed after the final accepted',
         'If Android paused the app while Gmail was searching',
+        'Reconstrucción terminada en segundo plano',
         'autoAcknowledge: false',
         'GmailBackgroundSearch.acknowledgeFinished(',
     ],
@@ -166,6 +168,8 @@ CHECKS = {
         'initialDelay: const Duration(seconds: 8)',
         "'_backgroundPending': true",
         "tag: 'gmail-background-search'",
+        'static Future<Map<String, dynamic>> _requestServerJob({',
+        '_processPackagePhotosInBackground(',
     ],
     'app/lib/migration_merge.dart': [
         'class MigrationMergePage',
