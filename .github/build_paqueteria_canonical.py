@@ -42,6 +42,7 @@ PATCHES = [
     '.github/patch_gmail_minimize_survival_v18.py',
     '.github/patch_gmail_client_invite_ui_v19.py',
     '.github/patch_gmail_client_scope_v20.py',
+    '.github/patch_gmail_foreground_survival_v21.py',
     '.github/patch_fast_tabs_cache.py',
     '.github/patch_migration_json_merge.py',
 ]
@@ -95,6 +96,7 @@ CHECKS = {
         'Reconstrucción terminada en segundo plano',
         'autoAcknowledge: false',
         "clientId: clientId ?? ''",
+        'GmailForegroundExecution.canProcess',
         'GmailBackgroundSearch.acknowledgeFinished(',
         'Búsqueda de Gmail iniciada',
     ],
@@ -188,6 +190,8 @@ CHECKS = {
         'gmailBackgroundCollectTask',
         'collectServerJob(',
         'gmail-background-collector',
+        'GmailForegroundExecution',
+        'FlutterBackground.enableBackgroundExecution',
         "'client_id': clientId.trim()",
     ],
     'app/lib/migration_merge.dart': [
