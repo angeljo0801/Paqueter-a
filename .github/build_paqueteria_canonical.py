@@ -51,6 +51,7 @@ PATCHES = [
     '.github/patch_client_photo_dashboard_v26.py',
     '.github/patch_package_photo_received_status_v27.py',
     '.github/patch_package_photo_received_status_fix_v28.py',
+    '.github/patch_package_received_status_refresh_v28.py',
     '.github/patch_migration_json_merge.py',
 ]
 
@@ -115,6 +116,8 @@ CHECKS = {
         '_receivedInCubaSticker',
         '_gmailPhotoReceivedInCuba',
         '_manualPhotoReceivedInCuba',
+        '_refreshCubaReceivedPhotoStatus',
+        "'cubaReceivedPhotoKeys': cubaReceivedPhotoKeys.toList()",
         "cubaReceivedPhotoKeys.contains('gmail:$url')",
     ],
     'app/lib/purchases.dart': [
