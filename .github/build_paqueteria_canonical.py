@@ -47,6 +47,7 @@ PATCHES = [
     '.github/patch_fast_tabs_cache.py',
     '.github/patch_gmail_bulk_packages_v23.py',
     '.github/patch_client_all_article_photos_v24.py',
+    '.github/patch_gmail_not_found_badge_v25.py',
     '.github/patch_migration_json_merge.py',
 ]
 
@@ -106,6 +107,8 @@ CHECKS = {
         'Búsqueda masiva de Gmail',
         'Búsqueda Gmail cancelada.',
         'La búsqueda terminó.',
+        'gmailNotFoundBadge(context)',
+        'gmailRecordNotFound(p)',
     ],
     'app/lib/purchases.dart': [
         '_refreshRemoteAfterLocalLoad',
@@ -152,6 +155,9 @@ CHECKS = {
         'gmailImageWorthOcr',
         'bool gmailRecordIsLinked(Map<String, dynamic> record)',
         'Widget gmailLinkedBadge(BuildContext context)',
+        'gmailRecordNotFound',
+        'persistPackageGmailLookupState',
+        'gmailNotFoundBadge',
         'Ya vinculado / reconstruido con Gmail',
         'gmailPrepareProductPhotos',
         '_gmailPromoText',
@@ -203,6 +209,7 @@ CHECKS = {
         'gmailBulkPackageScanTask',
         'class GmailBulkPackageScan',
         "tag:_tag",
+        'No encontrado siempre se reintenta',
     ],
     'app/lib/migration_merge.dart': [
         'class MigrationMergePage',
