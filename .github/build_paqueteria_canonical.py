@@ -250,7 +250,7 @@ CHECKS = {
         'Copiar tracking',
         'PackageEditPage(existing: package)',
         '_withPhotoCompletionStatus',
-        '_clientPhotoThumbProviders',
+        '_clientArticlePhotoThumbProviders',
         'ResizeImage.resizeIfNeeded(420, 420, provider)',
         "current['status'] = 'Completed'",
     ],
