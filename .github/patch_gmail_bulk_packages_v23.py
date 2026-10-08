@@ -185,14 +185,33 @@ p=Path('app/lib/packages.dart'); s=p.read_text()
 s=r1(s,
 '''class _PackagesPageState extends State<PackagesPage> {
   List<Map<String, dynamic>> rows = [], clients = [];
+  final search = TextEditingController();
   String q = '';
   @override
-  void initState() { super.initState(); load(); }
+  void initState() {
+    super.initState();
+    _restoreSearch();
+    load();
+  }
+
+  @override
+  void dispose() {
+    search.dispose();
+    super.dispose();
+  }
+
+  Future<void> _restoreSearch() async {
+    final saved = await readPersistentSearch('packages');
+    if (!mounted) return;
+    search.text = saved;
+    setState(() => q = saved);
+  }
   Future<void> load() async {
     final r = await Future.wait([Store.list('packages'), Store.list('clients')]);
 ''',
 '''class _PackagesPageState extends State<PackagesPage> {
   List<Map<String, dynamic>> rows = [], clients = [];
+  final search = TextEditingController();
   String q = '';
   Map<String,dynamic> bulk={'status':'idle'};
   Timer? _bulkTimer;
@@ -201,13 +220,25 @@ s=r1(s,
   @override
   void initState() {
     super.initState();
+    _restoreSearch();
     load(forceRefresh:true);
     _refreshBulk();
     _bulkTimer=Timer.periodic(const Duration(seconds:2),(_)=>_refreshBulk());
   }
 
   @override
-  void dispose(){ _bulkTimer?.cancel(); super.dispose(); }
+  void dispose() {
+    _bulkTimer?.cancel();
+    search.dispose();
+    super.dispose();
+  }
+
+  Future<void> _restoreSearch() async {
+    final saved = await readPersistentSearch('packages');
+    if (!mounted) return;
+    search.text = saved;
+    setState(() => q = saved);
+  }
 
   Future<void> load({bool forceRefresh=false}) async {
     final r = await Future.wait([
