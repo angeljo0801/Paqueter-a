@@ -10,15 +10,13 @@ def replace_once(text: str, old: str, new: str, label: str) -> str:
 p = Path('app/lib/packages.dart')
 s = p.read_text()
 
-init_anchor = r'''    hiddenEmailPhotoUrls.addAll(dynList(widget.existing?['hiddenEmailPhotoUrls']).map((e) => '$e'.trim()).where((e) => e.isNotEmpty));
+# Always refresh the persisted Cuba-received photo keys when the package opens.
+# The client photo dashboard may have updated these keys after the package list
+# screen was built, so widget.existing can legitimately be stale.
+init_anchor = """    hiddenEmailPhotoUrls.addAll(dynList(widget.existing?['hiddenEmailPhotoUrls']).map((e) => '$e'.trim()).where((e) => e.isNotEmpty));
     cubaReceivedPhotoKeys.addAll(dynList(widget.existing?['cubaReceivedPhotoKeys']).map((e) => '$e').where((e) => e.isNotEmpty));
-    gmailBackendUrl = await WhatsBotPurchaseSyncService.backendUrl();
-'''
-init_new = r'''    hiddenEmailPhotoUrls.addAll(dynList(widget.existing?['hiddenEmailPhotoUrls']).map((e) => '$e'.trim()).where((e) => e.isNotEmpty));
-    cubaReceivedPhotoKeys.addAll(dynList(widget.existing?['cubaReceivedPhotoKeys']).map((e) => '$e').where((e) => e.isNotEmpty));
-
-    // The package list can be stale after changing "Recibida en Cuba" from the
-    // client photo dashboard. Always read the newest persisted state.
+"""
+init_new = init_anchor + """
     if (widget.existing != null) {
       final persistedPackages =
           await Store.list('packages', forceRefresh: true);
@@ -42,9 +40,7 @@ init_new = r'''    hiddenEmailPhotoUrls.addAll(dynList(widget.existing?['hiddenE
           );
       }
     }
-
-    gmailBackendUrl = await WhatsBotPurchaseSyncService.backendUrl();
-'''
+"""
 s = replace_once(
     s,
     init_anchor,
@@ -52,42 +48,27 @@ s = replace_once(
     'refresh Cuba received status from persisted package',
 )
 
-class_old = r'''class _PackageEditPageState extends State<PackageEditPage> {
-'''
-class_new = r'''class _PackageEditPageState extends State<PackageEditPage>
-    with WidgetsBindingObserver {
-'''
-s = replace_once(s, class_old, class_new, 'package lifecycle observer')
-
-initstate_old = r'''  @override
-  void initState() { super.initState(); init(); }
-'''
-initstate_new = r'''  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    init();
+# PackageEditPage already observes app lifecycle for Gmail recovery. Extend that
+# existing resume hook instead of adding a second observer/mixin.
+lifecycle_old = """  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      Future<void>.delayed(
+        const Duration(milliseconds: 250),
+        _recoverFinishedGmailSearch,
+      );
+    }
   }
 
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    tracking.dispose();
-    weightUs.dispose();
-    weightCu.dispose();
-    billWeight.dispose();
-    notes.dispose();
-    gmailStore.dispose();
-    gmailOrder.dispose();
-    gmailStatus.dispose();
-    gmailEta.dispose();
-    super.dispose();
-  }
-
-  @override
+"""
+lifecycle_new = """  @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _refreshCubaReceivedPhotoStatus();
+      Future<void>.delayed(
+        const Duration(milliseconds: 250),
+        _recoverFinishedGmailSearch,
+      );
     }
   }
 
@@ -113,17 +94,28 @@ initstate_new = r'''  @override
         ..addAll(keys);
     });
   }
-'''
-s = replace_once(s, initstate_old, initstate_new, 'refresh package status on resume')
 
-save_anchor = r'''      'hiddenEmailPhotoUrls': hiddenEmailPhotoUrls.toList(),
+"""
+s = replace_once(
+    s,
+    lifecycle_old,
+    lifecycle_new,
+    'extend existing lifecycle refresh hook',
+)
+
+save_anchor = """      'hiddenEmailPhotoUrls': hiddenEmailPhotoUrls.toList(),
       'photoPaths': photoPaths,
-'''
-save_new = r'''      'hiddenEmailPhotoUrls': hiddenEmailPhotoUrls.toList(),
+"""
+save_new = """      'hiddenEmailPhotoUrls': hiddenEmailPhotoUrls.toList(),
       'cubaReceivedPhotoKeys': cubaReceivedPhotoKeys.toList(),
       'photoPaths': photoPaths,
-'''
-s = replace_once(s, save_anchor, save_new, 'save Cuba received keys')
+"""
+s = replace_once(
+    s,
+    save_anchor,
+    save_new,
+    'save Cuba received keys',
+)
 
 p.write_text(s)
-print('Package v28 applied: always refresh/persist Cuba received photo status.')
+print('Package refresh fix applied: persisted Cuba photo status is reloaded and preserved.')
