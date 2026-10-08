@@ -45,6 +45,7 @@ PATCHES = [
     '.github/patch_gmail_foreground_survival_v21.py',
     '.github/patch_gmail_terminal_not_found_v22.py',
     '.github/patch_fast_tabs_cache.py',
+    '.github/patch_gmail_bulk_packages_v23.py',
     '.github/patch_migration_json_merge.py',
 ]
 
@@ -100,6 +101,9 @@ CHECKS = {
         'GmailForegroundExecution.canProcess',
         'GmailBackgroundSearch.acknowledgeFinished(',
         'Búsqueda de Gmail iniciada',
+        '_bulkButton()',
+        'Búsqueda masiva de Gmail',
+        'Búsqueda Gmail cancelada.',
         'La búsqueda terminó.',
     ],
     'app/lib/purchases.dart': [
@@ -195,6 +199,9 @@ CHECKS = {
         'GmailForegroundExecution',
         'FlutterBackground.enableBackgroundExecution',
         "'client_id': clientId.trim()",
+        'gmailBulkPackageScanTask',
+        'class GmailBulkPackageScan',
+        "tag: _tag",
     ],
     'app/lib/migration_merge.dart': [
         'class MigrationMergePage',
