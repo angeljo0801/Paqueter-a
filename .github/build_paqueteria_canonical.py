@@ -46,6 +46,7 @@ PATCHES = [
     '.github/patch_gmail_terminal_not_found_v22.py',
     '.github/patch_fast_tabs_cache.py',
     '.github/patch_gmail_bulk_packages_v23.py',
+    '.github/patch_client_all_article_photos_v24.py',
     '.github/patch_migration_json_merge.py',
 ]
 
