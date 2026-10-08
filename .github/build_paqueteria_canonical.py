@@ -50,6 +50,7 @@ PATCHES = [
     '.github/patch_gmail_not_found_badge_v25.py',
     '.github/patch_client_photo_dashboard_v26.py',
     '.github/patch_package_photo_received_status_v27.py',
+    '.github/patch_package_photo_received_status_fix_v28.py',
     '.github/patch_migration_json_merge.py',
 ]
 
@@ -114,6 +115,7 @@ CHECKS = {
         '_receivedInCubaSticker',
         '_gmailPhotoReceivedInCuba',
         '_manualPhotoReceivedInCuba',
+        "cubaReceivedPhotoKeys.contains('gmail:$url')",
     ],
     'app/lib/purchases.dart': [
         '_refreshRemoteAfterLocalLoad',
