@@ -52,6 +52,7 @@ PATCHES = [
     '.github/patch_package_photo_received_status_v27.py',
     '.github/patch_package_photo_received_status_fix_v28.py',
     '.github/patch_client_photo_complete_cache_v29.py',
+    '.github/patch_gmail_self_learning_v30.py',
     '.github/patch_migration_json_merge.py',
 ]
 
@@ -90,6 +91,10 @@ CHECKS = {
         'manuallyAcceptedGmailPhotoUrls',
         'Ver imágenes descartadas',
         'GmailBackgroundSearch.reconstruct(',
+        'GmailPhotoLearningService',
+        'gmail_photo_learning_v1',
+        'corrección visual aprendida',
+        'descartada por aprendizaje local',
         "data['_backgroundPending'] == true",
         'GmailBackgroundSearch.friendlyError(e)',
         'la búsqueda seguirá en segundo plano',
@@ -253,6 +258,9 @@ CHECKS = {
         '_clientArticlePhotoThumbProviders',
         'ResizeImage.resizeIfNeeded(420, 420, provider)',
         "current['status'] = 'Completed'",
+        'GmailPhotoLearningService.rememberImage',
+        'product: true',
+        'product: false',
     ],
     'app/lib/backup_service.dart': [
         'restoreFile(String path)',
@@ -271,6 +279,7 @@ CHECKS = {
         "part 'gmail_accounts.dart';",
         "part 'gmail_purchase_link.dart';",
         "import 'dart:ui' as ui;",
+        "import 'dart:typed_data';",
         'body: IndexedStack(',
         '_listCache',
         'if (!mounted || changed <= 0) return;',
