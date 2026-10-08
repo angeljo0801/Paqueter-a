@@ -49,6 +49,7 @@ PATCHES = [
     '.github/patch_client_all_article_photos_v24.py',
     '.github/patch_gmail_not_found_badge_v25.py',
     '.github/patch_client_photo_dashboard_v26.py',
+    '.github/patch_package_photo_received_status_v27.py',
     '.github/patch_migration_json_merge.py',
 ]
 
@@ -110,6 +111,9 @@ CHECKS = {
         'La búsqueda terminó.',
         'gmailNotFoundBadge(context)',
         'gmailRecordNotFound(p)',
+        '_receivedInCubaSticker',
+        '_gmailPhotoReceivedInCuba',
+        '_manualPhotoReceivedInCuba',
     ],
     'app/lib/purchases.dart': [
         '_refreshRemoteAfterLocalLoad',
@@ -159,6 +163,7 @@ CHECKS = {
         'gmailRecordNotFound',
         'persistPackageGmailLookupState',
         'gmailNotFoundBadge',
+        "working[currentIndex]['receivedInCuba'] == true",
         'Ya vinculado / reconstruido con Gmail',
         'gmailPrepareProductPhotos',
         '_gmailPromoText',
