@@ -51,6 +51,7 @@ PATCHES = [
     '.github/patch_client_photo_dashboard_v26.py',
     '.github/patch_package_photo_received_status_v27.py',
     '.github/patch_package_photo_received_status_fix_v28.py',
+    '.github/patch_client_photo_complete_cache_v29.py',
     '.github/patch_migration_json_merge.py',
 ]
 
@@ -116,6 +117,8 @@ CHECKS = {
         '_gmailPhotoReceivedInCuba',
         '_manualPhotoReceivedInCuba',
         "cubaReceivedPhotoKeys.contains('gmail:$url')",
+        'packageCompletedBadge(context)',
+        "'Completed'",
     ],
     'app/lib/purchases.dart': [
         '_refreshRemoteAfterLocalLoad',
@@ -246,6 +249,10 @@ CHECKS = {
         'manual://',
         'Copiar tracking',
         'PackageEditPage(existing: package)',
+        '_withPhotoCompletionStatus',
+        '_clientPhotoThumbProviders',
+        'ResizeImage.resizeIfNeeded(420, 420, provider)',
+        "current['status'] = 'Completed'",
     ],
     'app/lib/backup_service.dart': [
         'restoreFile(String path)',
