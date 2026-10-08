@@ -48,6 +48,7 @@ PATCHES = [
     '.github/patch_gmail_bulk_packages_v23.py',
     '.github/patch_client_all_article_photos_v24.py',
     '.github/patch_gmail_not_found_badge_v25.py',
+    '.github/patch_client_photo_dashboard_v26.py',
     '.github/patch_migration_json_merge.py',
 ]
 
@@ -79,6 +80,14 @@ CHECKS = {
         'openGmailPhotoGallery',
         'gmailRecordIsLinked(p)',
         'gmailLinkedBadge(context)',
+        'Seleccionar',
+        'Recibida en Cuba',
+        'Quitar recibida',
+        'Correos no encontrados',
+        'cubaReceivedPhotoKeys',
+        'manual://',
+        'Copiar tracking',
+        'PackageEditPage(existing: package)',
         '_smartFilterAndCacheGmailPhotos',
         'gmailOfflinePhotoPaths',
         'gmailRejectedImages',
