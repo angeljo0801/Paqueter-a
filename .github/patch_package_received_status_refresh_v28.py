@@ -53,6 +53,7 @@ s = replace_once(
 lifecycle_old = """  @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      _startGmailRecoveryWatch();
       Future<void>.delayed(
         const Duration(milliseconds: 250),
         _recoverFinishedGmailSearch,
@@ -65,6 +66,7 @@ lifecycle_new = """  @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _refreshCubaReceivedPhotoStatus();
+      _startGmailRecoveryWatch();
       Future<void>.delayed(
         const Duration(milliseconds: 250),
         _recoverFinishedGmailSearch,
