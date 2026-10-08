@@ -185,7 +185,7 @@ class _ClientArticlePhotosPageState
     final localPath = '${offline.remove(url) ?? photo['localPath'] ?? ''}'.trim();
 
     final manuallyAccepted = dynList(
-      current['gmailManuallyAcceptedPhotoUrls'],
+      current['manuallyAcceptedGmailPhotoUrls'],
     ).map((e) => '$e'.trim()).where((e) => e.isNotEmpty && e != url).toList();
 
     all[index] = {
@@ -194,7 +194,7 @@ class _ClientArticlePhotosPageState
       'emailAttachmentImages': attachments,
       'hiddenEmailPhotoUrls': hidden.toList(),
       'gmailOfflinePhotoPaths': offline,
-      'gmailManuallyAcceptedPhotoUrls': manuallyAccepted,
+      'manuallyAcceptedGmailPhotoUrls': manuallyAccepted,
     };
     await Store.saveList('packages', all);
     Store.clearListCache('packages');
