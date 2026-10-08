@@ -201,7 +201,7 @@ CHECKS = {
         "'client_id': clientId.trim()",
         'gmailBulkPackageScanTask',
         'class GmailBulkPackageScan',
-        "tag: _tag",
+        "tag:_tag",
     ],
     'app/lib/migration_merge.dart': [
         'class MigrationMergePage',
