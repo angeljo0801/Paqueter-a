@@ -120,6 +120,11 @@ CHECKS = {
         '_manualPhotoReceivedInCuba',
         "cubaReceivedPhotoKeys.contains('gmail:$url')",
         'packageCompletedBadge(context)',
+        'packageSelectionMode',
+        'selectedPackageIds',
+        '_searchSelectedInGmail',
+        '_deleteSelectedPackages',
+        'Seleccionar todos los visibles',
         "'Completed'",
     ],
     'app/lib/purchases.dart': [
@@ -199,11 +204,6 @@ CHECKS = {
         'gmail_photo_learning_v1',
         'corrección visual aprendida',
         'descartada por aprendizaje local',
-        'packageSelectionMode',
-        'selectedPackageIds',
-        '_searchSelectedInGmail',
-        '_deleteSelectedPackages',
-        'Seleccionar todos los visibles',
     ],
     'app/lib/background_sync.dart': [
         "const String gmailBackgroundTask = 'gmailBackgroundReconstruct';",
