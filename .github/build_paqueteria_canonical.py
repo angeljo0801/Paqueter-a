@@ -53,6 +53,7 @@ PATCHES = [
     '.github/patch_package_photo_received_status_fix_v28.py',
     '.github/patch_client_photo_complete_cache_v29.py',
     '.github/patch_gmail_self_learning_v30.py',
+    '.github/patch_gmail_bulk_selection_v31.py',
     '.github/patch_migration_json_merge.py',
 ]
 
@@ -198,6 +199,11 @@ CHECKS = {
         'gmail_photo_learning_v1',
         'corrección visual aprendida',
         'descartada por aprendizaje local',
+        'packageSelectionMode',
+        'selectedPackageIds',
+        '_searchSelectedInGmail',
+        '_deleteSelectedPackages',
+        'Seleccionar todos los visibles',
     ],
     'app/lib/background_sync.dart': [
         "const String gmailBackgroundTask = 'gmailBackgroundReconstruct';",
@@ -226,6 +232,8 @@ CHECKS = {
         'class GmailBulkPackageScan',
         "tag:_tag",
         'No encontrado siempre se reintenta',
+        'scopeLabel',
+        'Iterable<String>? packageIds',
     ],
     'app/lib/migration_merge.dart': [
         'class MigrationMergePage',
@@ -254,6 +262,8 @@ CHECKS = {
         'manual://',
         'Copiar tracking',
         'PackageEditPage(existing: package)',
+        '_searchAllClientPackagesInGmail',
+        'Buscar todos en Gmail',
         '_withPhotoCompletionStatus',
         '_clientArticlePhotoThumbProviders',
         'ResizeImage.resizeIfNeeded(420, 420, provider)',
