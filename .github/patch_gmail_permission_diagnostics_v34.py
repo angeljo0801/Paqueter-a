@@ -18,12 +18,10 @@ change("  bool configured = false;\n  String error = '';\n",
   Map<int, Map<String, dynamic>> permissionResults = {};
 """, 'state')
 
-change("""        accounts = rows;
-        configured = data['configured'] == true;
+change("""        configured = data['configured'] == true;
         error = '';
 """,
-"""        accounts = rows;
-        configured = data['configured'] == true;
+"""        configured = data['configured'] == true;
         permissionResults = {};
         permissionsCheckedAt = null;
         permissionCheckError = '';
