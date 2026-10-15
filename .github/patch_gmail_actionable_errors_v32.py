@@ -3,11 +3,11 @@ from pathlib import Path
 p = Path('app/lib/background_sync.dart')
 s = p.read_text()
 start_marker = '  static String friendlyError(Object error) {'
-end_marker = '  static Future<Map<String, dynamic>> _requestWithRetry({'
-if s.count(start_marker) != 1 or s.count(end_marker) != 1:
+end_marker = '\n  }\n\n'
+if s.count(start_marker) != 1:
     raise SystemExit('Gmail actionable errors: unexpected background service structure')
 start = s.index(start_marker)
-end = s.index(end_marker, start)
+end = s.index(end_marker, start) + len(end_marker)
 func = r'''  static String friendlyError(Object error) {
     final raw = '$error';
     final lower = raw.toLowerCase();
