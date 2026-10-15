@@ -651,7 +651,29 @@ class _PackageEditPageState extends State<PackageEditPage> {
     final details = widget.existing?['courierDetails'] is List ? (widget.existing!['courierDetails'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList() : <Map<String, dynamic>>[];
     final emailImages = _emailPhotoEntries();
     return Scaffold(
-      appBar: AppBar(title: Text(widget.existing == null ? 'Nuevo paquete' : 'Editar paquete'), actions: [if (tracking.text.trim().isNotEmpty) IconButton(tooltip: 'Rastrear en courier', onPressed: openTracking, icon: const Icon(Icons.local_shipping))]),
+      appBar: AppBar(
+        title: Text(widget.existing == null ? 'Nuevo paquete' : 'Editar paquete'),
+        actions: [
+          if (tracking.text.trim().isNotEmpty)
+            IconButton(
+              tooltip: 'Rastrear en courier',
+              onPressed: openTracking,
+              icon: const Icon(Icons.local_shipping),
+            ),
+          if (widget.existing != null)
+            IconButton(
+              tooltip: 'Enviar paquete a Papelera',
+              icon: Icon(Icons.delete_outline,
+                  color: Theme.of(context).colorScheme.error),
+              onPressed: () async {
+                final confirmed = await confirmDelete(context, 'este paquete');
+                if (!confirmed || !mounted) return;
+                await softDelete('packages', widget.existing!['id'].toString());
+                if (mounted) Navigator.pop(context, true);
+              },
+            ),
+        ],
+      ),
       body: ListView(padding: const EdgeInsets.all(16), children: [
         TextField(
           controller: tracking,
