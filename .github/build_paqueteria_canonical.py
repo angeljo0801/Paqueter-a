@@ -55,6 +55,7 @@ PATCHES = [
     '.github/patch_gmail_self_learning_v30.py',
     '.github/patch_gmail_bulk_selection_v31.py',
     '.github/patch_migration_json_merge.py',
+    '.github/patch_package_purchase_links.py',
 ]
 
 for patch in PATCHES:
@@ -296,6 +297,19 @@ CHECKS = {
         'await BackgroundCourierSync.initializeAndSchedule();',
     ],
 }
+
+CHECKS['app/lib/package_purchase_links.dart'] = [
+    'class PackagePurchaseLinks', 'choosePurchases(', 'choosePackagesForPurchase(',
+    "'purchaseIds'", "'purchaseId'",
+]
+CHECKS['app/lib/packages.dart'].extend([
+    'selectedPurchaseIds', 'PackagePurchaseLinks.choosePurchases(',
+    "'purchaseIds': <String>",
+])
+CHECKS['app/lib/purchases.dart'].extend([
+    'PackagePurchaseLinks.choosePackagesForPurchase(',
+    'Paquetes vinculados (',
+])
 
 missing = []
 for file_name, markers in CHECKS.items():
