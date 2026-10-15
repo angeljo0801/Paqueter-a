@@ -12,6 +12,9 @@ func = r'''  static String friendlyError(Object error) {
     final raw = '$error';
     final lower = raw.toLowerCase();
     if (lower.contains('no hay cuentas gmail autorizadas') ||
+        lower.contains('no hay cuentas gmail habilitadas') ||
+        lower.contains('pendientes de autorización') ||
+        lower.contains('no existe una cuenta gmail disponible') ||
         lower.contains('no enabled gmail') ||
         lower.contains('no gmail') ||
         lower.contains('gmail is not connected')) {
@@ -27,6 +30,8 @@ func = r'''  static String friendlyError(Object error) {
       return 'Gmail está limitando temporalmente las consultas. Espera unos minutos y vuelve a intentar.';
     }
     if (lower.contains('401') || lower.contains('403') ||
+        lower.contains('la autorización de gmail ha caducado') ||
+        lower.contains('ha sido revocada') ||
         lower.contains('invalid_grant') || lower.contains('unauthorized') ||
         lower.contains('insufficientpermissions') ||
         lower.contains('forbidden')) {
