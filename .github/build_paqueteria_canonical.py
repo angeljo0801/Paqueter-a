@@ -303,6 +303,8 @@ CHECKS['app/lib/package_purchase_links.dart'] = [
     "'purchaseIds'", "'purchaseId'",
 ]
 CHECKS['app/lib/packages.dart'].extend([
+    'Enviar paquete a Papelera',
+    "await softDelete('packages', widget.existing!['id'].toString())",
     'selectedPurchaseIds', 'PackagePurchaseLinks.choosePurchases(',
     "'purchaseIds': <String>",
 ])
