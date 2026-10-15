@@ -303,7 +303,8 @@ CHECKS = {
 CHECKS['app/lib/background_sync.dart'].extend([
     'Gmail está limitando temporalmente las consultas',
     'Gmail no terminó de revisar los mensajes',
-    "clientId: '${data['clientId'] ?? ''}'",
+    'Gmail v33 scope verified',
+    'clientId: clientId,',
     'el tracking no exista',
 ])
 
