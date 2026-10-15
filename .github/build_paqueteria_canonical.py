@@ -58,6 +58,7 @@ PATCHES = [
     '.github/patch_package_purchase_links.py',
     '.github/patch_gmail_actionable_errors_v32.py',
     '.github/patch_gmail_client_scope_worker_v33.py',
+    '.github/patch_gmail_permission_diagnostics_v34.py',
 ]
 
 for patch in PATCHES:
@@ -299,6 +300,16 @@ CHECKS = {
         'await BackgroundCourierSync.initializeAndSchedule();',
     ],
 }
+
+CHECKS['app/lib/gmail_accounts.dart'].extend([
+    'Comprobar permisos de Gmail',
+    'Future<void> checkGmailPermissions() async',
+    '/api/gmail/accounts/diagnostics',
+    'Permiso caducado / revocado',
+    'No se pudo verificar',
+    'permissionSubtitle(account)',
+    'Volver a autorizar',
+])
 
 CHECKS['app/lib/background_sync.dart'].extend([
     'Gmail está limitando temporalmente las consultas',
