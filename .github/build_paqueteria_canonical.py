@@ -56,6 +56,7 @@ PATCHES = [
     '.github/patch_gmail_bulk_selection_v31.py',
     '.github/patch_migration_json_merge.py',
     '.github/patch_package_purchase_links.py',
+    '.github/patch_gmail_actionable_errors_v32.py',
 ]
 
 for patch in PATCHES:
@@ -297,6 +298,12 @@ CHECKS = {
         'await BackgroundCourierSync.initializeAndSchedule();',
     ],
 }
+
+CHECKS['app/lib/background_sync.dart'].extend([
+    'Gmail está limitando temporalmente las consultas',
+    'Gmail no terminó de revisar los mensajes',
+    'el tracking no exista',
+])
 
 CHECKS['app/lib/package_purchase_links.dart'] = [
     'class PackagePurchaseLinks', 'choosePurchases(', 'choosePackagesForPurchase(',
