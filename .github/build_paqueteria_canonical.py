@@ -57,6 +57,7 @@ PATCHES = [
     '.github/patch_migration_json_merge.py',
     '.github/patch_package_purchase_links.py',
     '.github/patch_gmail_actionable_errors_v32.py',
+    '.github/patch_gmail_client_scope_worker_v33.py',
 ]
 
 for patch in PATCHES:
@@ -302,6 +303,7 @@ CHECKS = {
 CHECKS['app/lib/background_sync.dart'].extend([
     'Gmail está limitando temporalmente las consultas',
     'Gmail no terminó de revisar los mensajes',
+    "clientId: '${data['clientId'] ?? ''}'",
     'el tracking no exista',
 ])
 
