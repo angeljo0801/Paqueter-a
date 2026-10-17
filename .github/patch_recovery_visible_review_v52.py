@@ -35,8 +35,8 @@ old_btn="                  if (gmailRejectedImages.isNotEmpty)"
 new_btn="                  if (gmailRejectedImages.isNotEmpty || gmailCandidateInbox.isNotEmpty)"
 assert section.count(old_btn)==1,'Gmail rejected button hidden in a different place'
 section=section.replace(old_btn,new_btn,1)
-old_label="'Ver imágenes descartadas (\${gmailRejectedImages.length})'"
-new_label="'Ver imágenes para revisar (\${gmailRejectedImages.isNotEmpty ? gmailRejectedImages.length : gmailCandidateInbox.length})'"
+old_label="'Ver imágenes descartadas (${gmailRejectedImages.length})'"
+new_label="'Ver imágenes para revisar (${gmailRejectedImages.isNotEmpty ? gmailRejectedImages.length : gmailCandidateInbox.length})'"
 assert section.count(old_label)==1, 'Gmail button label changed'
 section=section.replace(old_label,new_label,1)
 s=s[:photo_at]+section+s[end_at:]
