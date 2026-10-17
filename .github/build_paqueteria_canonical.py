@@ -56,6 +56,7 @@ PATCHES = [
     '.github/patch_gmail_bulk_selection_v31.py',
     '.github/patch_migration_json_merge.py',
     '.github/patch_package_purchase_links.py',
+    '.github/patch_recovery_storage_boot_v43.py',
 ]
 
 for patch in PATCHES:
@@ -311,6 +312,22 @@ CHECKS['app/lib/packages.dart'].extend([
 CHECKS['app/lib/purchases.dart'].extend([
     'PackagePurchaseLinks.choosePackagesForPurchase(',
     'Paquetes vinculados (',
+])
+
+CHECKS['app/lib/main.dart'].extend([
+    "MethodChannel('com.angelapps.paqueteria/local_store')",
+    "load();\n  }\n\n  Future<void> load({bool syncCourier = false})",
+    "'Reintentar leer mis datos'",
+    "if (dashboardLoadWarning.isNotEmpty)",
+    "return await Store.list(key).timeout(const Duration(seconds: 40))",
+])
+CHECKS['app/lib/extras.dart'].extend([
+    "await Store._writeRaw(snapshotKey, jsonEncode(snapshot))",
+    "await Store._readRaw(snapshotKey)",
+])
+CHECKS['app/lib/packages.dart'].extend([
+    "_smartFilterAndCacheGmailPhotos",
+    "showGmailRejectedPhotoGrid",
 ])
 
 missing = []
