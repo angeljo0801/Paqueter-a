@@ -60,6 +60,8 @@ PATCHES = [
     '.github/patch_gmail_client_scope_worker_v33.py',
     '.github/patch_gmail_permission_diagnostics_v34.py',
     '.github/patch_gmail_verified_not_found_v35.py',
+    '.github/patch_dashboard_local_first_v36.py',
+    '.github/patch_courier_safe_merge_v36.py',
 ]
 
 for patch in PATCHES:
@@ -320,6 +322,19 @@ CHECKS['app/lib/background_sync.dart'].extend([
     "'gmailLookupTracking': tracking",
     "'gmailLookupStatus': 'found'",
 ])
+
+CHECKS['app/lib/main.dart'].extend([
+    'Future<void> _refreshCouriersAfterLoad() async',
+    "await load(); // Refresh local dashboard data only, never restart sync.",
+    'No pude cargar los datos locales.',
+    'Reintentar cargar mis datos',
+    'unawaited(_refreshCouriersAfterLoad());',
+])
+CHECKS['app/lib/tracking_service.dart'] = [
+    "Store.list('packages', forceRefresh: true)",
+    'Courier calls can take several minutes.',
+    "Store.list('courierNotifications', forceRefresh: true)",
+]
 
 CHECKS['app/lib/gmail_accounts.dart'].extend([
     'Comprobar permisos de Gmail',
