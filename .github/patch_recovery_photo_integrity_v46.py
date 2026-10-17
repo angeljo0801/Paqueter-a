@@ -2,13 +2,13 @@ from pathlib import Path
 
 p = Path('app/lib/background_sync.dart')
 s = p.read_text()
-old = '''      final result = await _processPackagePhotosInBackground(
-        result: rawResult,
-        baseUrl: '${data['baseUrl'] ?? ''}',
-        apiKey: '${data['apiKey'] ?? ''}',
-        packageId: '${data['packageId'] ?? ''}',
-        tracking: '${data['tracking'] ?? ''}',
-      );'''
+old = '''    final result = await _processPackagePhotosInBackground(
+      result: rawResult,
+      baseUrl: baseUrl,
+      apiKey: apiKey,
+      packageId: packageId,
+      tracking: tracking,
+    );'''
 new = '''    // WorkManager's headless FlutterEngine cannot use the Activity native
     // per-key preferences channel, and the old getAll() can fail when local
     // photo lists are large. Save the COMPLETE RAW Gmail payload durably.
