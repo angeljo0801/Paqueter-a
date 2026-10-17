@@ -64,6 +64,8 @@ PATCHES = [
     '.github/patch_courier_safe_merge_v36.py',
     '.github/patch_startup_storage_recovery_v37.py',
     '.github/patch_native_local_storage_v38.py',
+    '.github/patch_gmail_per_key_slots_v39.py',
+    '.github/patch_gmail_stale_metadata_v40.py',
 ]
 
 for patch in PATCHES:
@@ -323,6 +325,18 @@ CHECKS['app/lib/packages.dart'].extend([
 CHECKS['app/lib/background_sync.dart'].extend([
     "'gmailLookupTracking': tracking",
     "'gmailLookupStatus': 'found'",
+])
+
+CHECKS['app/lib/background_sync.dart'].extend([
+    'class _GmailPreferenceView',
+    'final prefs = await _GmailPreferenceView.open(slot);',
+    'Android no pudo leer su estado local',
+])
+CHECKS['app/lib/packages.dart'].extend([
+    'if (!_gmailVerifiedForCurrent)',
+])
+CHECKS['app/lib/main.dart'].extend([
+    'static Future<void> _removeRaw(String key) async',
 ])
 
 CHECKS['app/lib/main.dart'].extend([
