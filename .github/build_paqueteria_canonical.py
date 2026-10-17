@@ -60,6 +60,7 @@ PATCHES = [
     '.github/patch_recovery_gmail_slots_v44.py',
     '.github/patch_recovery_photo_integrity_v46.py',
     '.github/patch_recovery_photo_analysis_v47.py',
+    '.github/patch_recovery_delivery_proof_v48.py',
 ]
 
 for patch in PATCHES:
