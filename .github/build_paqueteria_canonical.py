@@ -58,6 +58,7 @@ PATCHES = [
     '.github/patch_package_purchase_links.py',
     '.github/patch_recovery_storage_boot_v43.py',
     '.github/patch_recovery_gmail_slots_v44.py',
+    '.github/patch_recovery_photo_integrity_v46.py',
 ]
 
 for patch in PATCHES:
