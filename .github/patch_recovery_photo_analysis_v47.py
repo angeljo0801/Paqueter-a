@@ -26,6 +26,13 @@ assert part.count(needle)==1
 part=part.replace(needle,"    await Store._writeRaw(_key, jsonEncode(compact));",1)
 s=s[:a]+part+s[b:]
 
+# ML Kit reads a file URI, so the temporary OCR file needs a real image
+# extension, not a trailing ".tmp" (which can leave recognition empty).
+tmp_old="final temp = File('${dir.path}/.$digest.$ext.tmp');"
+tmp_new="final temp = File('${dir.path}/.gmail_analysis_$digest.$ext');"
+assert s.count(tmp_old)==1, 'OCR temporary path changed'
+s=s.replace(tmp_old,tmp_new,1)
+
 a=s.index('Future<Map<String, dynamic>> gmailPrepareProductPhotos({')
 b=s.index('\nWidget gmailSmartPhotoImage(',a)
 part=s[a:b]
