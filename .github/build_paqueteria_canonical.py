@@ -63,6 +63,7 @@ PATCHES = [
     '.github/patch_dashboard_local_first_v36.py',
     '.github/patch_courier_safe_merge_v36.py',
     '.github/patch_startup_storage_recovery_v37.py',
+    '.github/patch_native_local_storage_v38.py',
 ]
 
 for patch in PATCHES:
@@ -380,6 +381,19 @@ CHECKS['app/lib/purchases.dart'].extend([
     'PackagePurchaseLinks.choosePackagesForPurchase(',
     'Paquetes vinculados (',
 ])
+
+CHECKS['app/lib/main.dart'].extend([
+    "MethodChannel('com.angelapps.paqueteria/local_store')",
+    "'readChunk'",
+    "'startWrite'",
+    "'finishWrite'",
+    "Los datos de",
+    'await Store.list(key).timeout(const Duration(seconds: 30))',
+])
+CHECKS['app/lib/extras.dart'] = [
+    'await Store._writeRaw(snapshotKey, jsonEncode(snapshot))',
+    'await Store._readRaw(snapshotKey)',
+]
 
 missing = []
 for file_name, markers in CHECKS.items():
