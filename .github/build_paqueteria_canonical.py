@@ -338,7 +338,7 @@ CHECKS['app/lib/main.dart'].extend([
 CHECKS['app/lib/main.dart'].extend([
     'Future<void> _refreshCouriersAfterLoad() async',
     "await load(); // Refresh local dashboard data only, never restart sync.",
-    'No pude cargar los datos locales.',
+    'No pude acceder al almacenamiento local.',
     'Reintentar cargar mis datos',
     'unawaited(_refreshCouriersAfterLoad());',
 ])
