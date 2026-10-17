@@ -156,3 +156,32 @@ if body.count(expected) > 3:
 s=s[:start]+body+s[end:]
 p.write_text(s)
 print(f'Gmail v39: migrated {number} Gmail lookup preference usages to native per-key reads.')
+
+# Surface a diagnostic category without exposing credentials or email payloads.
+# Old recovery hid all local failures behind the same generic message.
+p=Path('app/lib/background_sync.dart')
+s=p.read_text()
+start=s.index('  static String friendlyError(Object error) {')
+end=s.index('\n  }\n',start)
+method=s[start:end]
+needle="    return 'No se pudo completar la búsqueda en Gmail. Inténtalo nuevamente.';"
+replacement=r'''    if (lower.contains('sharedpreferences') ||
+        lower.contains('fluttersharedpreferences') ||
+        lower.contains('local_store') ||
+        lower.contains('channel-error')) {
+      return 'No se pudo acceder al almacenamiento local de la búsqueda Gmail. '
+          'Tus datos no han sido borrados. Vuelve a intentar.';
+    }
+    if (lower.contains('socketexception') ||
+        lower.contains('clientexception')) {
+      return 'No se pudo establecer conexión con Railway para buscar en Gmail.';
+    }
+    return 'La búsqueda de Gmail falló antes de completarse '
+        '(${error.runtimeType}). No se han borrado tus datos.';
+'''
+if method.count(needle)!=1:
+    raise SystemExit('Recovery Gmail v44: expected original generic error response')
+method=method.replace(needle,replacement,1)
+s=s[:start]+method+s[end:]
+p.write_text(s)
+print('Recovery Gmail v44: local task-key reads and safe error diagnostics.')
