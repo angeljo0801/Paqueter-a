@@ -61,6 +61,7 @@ PATCHES = [
     '.github/patch_recovery_photo_integrity_v46.py',
     '.github/patch_recovery_photo_analysis_v47.py',
     '.github/patch_recovery_delivery_proof_v48.py',
+    '.github/patch_recovery_photo_persistence_v49.py',
 ]
 
 for patch in PATCHES:
