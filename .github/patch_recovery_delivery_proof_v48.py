@@ -162,7 +162,8 @@ s=s.replace(load,load+"""
       );""",1)
 
 a=s.index('  Future<void> linkPurchaseWithGmail() async {')
-b=s.index('  Future<void> _smartFilterAndCachePurchaseGmailPhotos() async {',a)
+b=s.find('\n  Future<void> ',a+10)
+if b < 0: b=len(s)
 method=s[a:b]
 source="          for (final raw in dynList(data['emailPhotoCandidates'])) {"
 assert method.count(source)==1
