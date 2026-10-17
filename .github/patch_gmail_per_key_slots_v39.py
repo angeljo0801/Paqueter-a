@@ -133,15 +133,15 @@ slot_methods = [
 ]
 for method_name in slot_methods:
     signature = re.search(
-        r'  static Future<[^\\n]*> ' + method_name + r'\\(', body,
+        r'  static Future<.*> ' + method_name + r'\(', body,
     )
     if signature is None:
         raise SystemExit('Gmail v39: missing slot method ' + method_name)
     lo = signature.start()
     starts = [
         i for i in [
-            body.find('\\n  static ', lo + 8),
-            body.find('\\n  @pragma(', lo + 8),
+            body.find('\n  static ', lo + 8),
+            body.find('\n  @pragma(, lo + 8),
         ] if i >= 0
     ]
     hi = min(starts) if starts else len(body)
