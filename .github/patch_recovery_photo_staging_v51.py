@@ -144,12 +144,12 @@ s=s.replace(field,field+"\n      'gmailCandidateInbox': gmailCandidateInbox,\n  
 # Important: the manual Restore button historically changed only in-memory
 # state; save immediately and verify so the next editor open honors it.
 start=s.index('  Future<void> _showRejectedGmailPhotos() async {')
-end=s.find('\n  Future<void> ',start+10)
-assert end>start
-method=s[start:end]
+last_cached=s.index('      for (final image in cached) {',start)
 marker="    });\n  }"
-assert method.endswith(marker+"\n"), 'v51: manual recover method changed'
-method=method[:-len(marker+"\n")]+"""    });
+end=s.index(marker,last_cached)+len(marker)
+method=s[start:end]
+assert method.endswith(marker), 'v51: manual recover closure changed'
+method=method[:-len(marker)]+"""    });
     try {
       await _persistRecoveredGmailSnapshot();
       if (mounted) {
@@ -164,8 +164,7 @@ method=method[:-len(marker+"\n")]+"""    });
         );
       }
     }
-  }
-"""
+  }"""
 s=s[:start]+method+s[end:]
 
 # Update the main filtered result's review shelf immediately as well.
@@ -174,7 +173,11 @@ end=s.index('  Future<void> _showRejectedGmailPhotos() async {',start)
 method=s[start:end]
 a="      gmailRejectedImages = rejected;"
 assert method.count(a)==1
-method=method.replace(a,a+"\n      _restoreGmailCandidateInboxReview();",1)
+# Refresh the review shelf only after accepted photo arrays have been replaced.
+end_of_filter="          .toList();\n    });"
+assert method.count(end_of_filter)==1, 'v51: final accepted snapshot changed'
+method=method.replace(end_of_filter,
+    "          .toList();\n      _restoreGmailCandidateInboxReview();\n    });",1)
 s=s[:start]+method+s[end:]
 
 p.write_text(s)
