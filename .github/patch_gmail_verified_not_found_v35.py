@@ -154,10 +154,12 @@ s = one(s,
 
 s = one(s,
 """      'gmailEstimatedDelivery': gmailEta.text.trim(),
+      'emailPhotoUrls': emailPhotoUrls,
 """,
 """      'gmailEstimatedDelivery': _gmailNotFoundForCurrent ? '' : gmailEta.text.trim(),
       'gmailLookupStatus': gmailVerifiedLookupStatus,
       'gmailLookupTracking': gmailVerifiedTracking,
+      'emailPhotoUrls': emailPhotoUrls,
 """,
 'persist editor lookup status')
 
