@@ -7,6 +7,7 @@ native.write_text(r'''package com.angelapps.paqueteria
 import android.content.Context
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodChannel
+import java.util.UUID
 
 // Uses the existing legacy SharedPreferences file without migration.
 // Avoids transporting *all* user data over Android IPC on startup.
@@ -14,6 +15,8 @@ object PaqueteriaLocalStoreBridge {
     private const val CHANNEL = "com.angelapps.paqueteria/local_store"
     private const val NAME = "FlutterSharedPreferences"
     private const val SIZE = 48000
+    private data class PendingWrite(val key: String, val expected: Int, val text: StringBuilder)
+    private val pendingWrites = mutableMapOf<String, PendingWrite>()
 
     fun register(context: Context, messenger: BinaryMessenger) {
         val prefs = context.getSharedPreferences(NAME, Context.MODE_PRIVATE)
@@ -53,6 +56,44 @@ object PaqueteriaLocalStoreBridge {
                         } else {
                             result.error("WRITE_FAILED", "Could not persist local data.", null)
                         }
+                    }
+                    "startWrite" -> {
+                        val key = call.argument<String>("key") ?: ""
+                        val length = call.argument<Int>("length") ?: -1
+                        if (!key.startsWith("flutter.") || length < 0 || length > 50000000) {
+                            result.error("INVALID_WRITE", "Invalid write length.", null)
+                        } else {
+                            val handle = UUID.randomUUID().toString()
+                            pendingWrites[handle] = PendingWrite(key, length, StringBuilder())
+                            result.success(handle)
+                        }
+                    }
+                    "appendWrite" -> {
+                        val handle = call.argument<String>("handle") ?: ""
+                        val chunk = call.argument<String>("chunk") ?: ""
+                        val write = pendingWrites[handle]
+                        if (write == null || chunk.length > SIZE ||
+                            write.text.length + chunk.length > write.expected) {
+                            result.error("INVALID_CHUNK", "Invalid write chunk.", null)
+                        } else {
+                            write.text.append(chunk)
+                            result.success(true)
+                        }
+                    }
+                    "finishWrite" -> {
+                        val handle = call.argument<String>("handle") ?: ""
+                        val write = pendingWrites.remove(handle)
+                        if (write == null || write.text.length != write.expected) {
+                            result.error("INCOMPLETE_WRITE", "Write was incomplete.", null)
+                        } else if (prefs.edit().putString(write.key, write.text.toString()).commit()) {
+                            result.success(true)
+                        } else {
+                            result.error("WRITE_FAILED", "Could not persist local data.", null)
+                        }
+                    }
+                    "abortWrite" -> {
+                        pendingWrites.remove(call.argument<String>("handle") ?: "")
+                        result.success(true)
                     }
                     else -> result.notImplemented()
                 }
@@ -118,11 +159,43 @@ s = s[:start] + r'''  static const MethodChannel _perKeyStore =
   static Future<void> _writeRaw(String key, String value) async {
     if (Platform.isAndroid) {
       try {
-        final success = await _perKeyStore.invokeMethod<bool>(
-          'writeString', {'key': 'flutter.$key', 'value': value},
-        ).timeout(const Duration(seconds: 30));
-        if (success != true) throw StateError('No se pudo guardar $key.');
-        return;
+        if (value.length <= 48000) {
+          final success = await _perKeyStore.invokeMethod<bool>(
+            'writeString', {'key': 'flutter.$key', 'value': value},
+          ).timeout(const Duration(seconds: 30));
+          if (success != true) throw StateError('No se pudo guardar $key.');
+          return;
+        }
+        final handle = await _perKeyStore.invokeMethod<String>(
+          'startWrite', {'key': 'flutter.$key', 'length': value.length},
+        ).timeout(const Duration(seconds: 15));
+        if (handle == null) throw StateError('No se pudo iniciar el guardado de $key.');
+        try {
+          var offset = 0;
+          while (offset < value.length) {
+            var end = (offset + 48000).clamp(0, value.length);
+            // Do not split a UTF-16 surrogate pair between channel messages.
+            if (end < value.length && end > offset) {
+              final before = value.codeUnitAt(end - 1);
+              final after = value.codeUnitAt(end);
+              if (before >= 0xD800 && before <= 0xDBFF &&
+                  after >= 0xDC00 && after <= 0xDFFF) end--;
+            }
+            await _perKeyStore.invokeMethod<bool>('appendWrite',
+              {'handle': handle, 'chunk': value.substring(offset, end)},
+            ).timeout(const Duration(seconds: 15));
+            offset = end;
+          }
+          final saved = await _perKeyStore.invokeMethod<bool>(
+            'finishWrite', {'handle': handle},
+          ).timeout(const Duration(seconds: 45));
+          if (saved != true) throw StateError('No se pudo terminar el guardado de $key.');
+          return;
+        } finally {
+          try {
+            await _perKeyStore.invokeMethod<bool>('abortWrite', {'handle': handle});
+          } catch (_) {}
+        }
       } on MissingPluginException {
         // Flutter background workers still use the existing legacy storage.
       }
