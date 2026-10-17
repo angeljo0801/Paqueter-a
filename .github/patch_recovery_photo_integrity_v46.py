@@ -179,3 +179,68 @@ method=method.replace(anchor,"""    if (accepted.isEmpty) {
 s=s[:start]+method+s[end:]
 p.write_text(s)
 print('Gmail v46: worker preserves raw result, server thumbnails are used, prior photos survive empty filters.')
+
+
+# v46: purchase editor also consumes server-prepared candidate images, without
+# dropping the original sender URLs. Match the package editor's reliability.
+p=Path('app/lib/purchases.dart')
+s=p.read_text()
+start=s.index('  Future<void> linkPurchaseWithGmail() async {')
+end=s.index('  Future<void> _smartFilterAndCachePurchaseGmailPhotos() async {',start) if '  Future<void> _smartFilterAndCachePurchaseGmailPhotos() async {' in s[start:] else s.index('\n  Future<void> ',start+10)
+method=s[start:end]
+anchor="          for (final raw in dynList(data['emailPhotoUrls'])) {\n"
+if method.count(anchor)!=1:
+    raise SystemExit('Gmail v46: purchase editor candidate insertion changed')
+candidate_code="""          for (final raw in dynList(data['emailPhotoCandidates'])) {
+            if (raw is! Map) continue;
+            final image = Map<String, dynamic>.from(raw);
+            final url = (image['url'] ?? '').toString().trim();
+            if (url.isEmpty || hiddenGmailPurchasePhotoUrls.contains(url)) continue;
+            if (image['kind'] == 'attachment') {
+              if (!gmailPurchaseAttachmentImages.any(
+                  (e) => (e['url'] ?? '').toString().trim() == url)) {
+                gmailPurchaseAttachmentImages.add(image);
+              }
+            } else if (!gmailPurchasePhotoUrls.contains(url)) {
+              gmailPurchasePhotoUrls.add(url);
+            }
+          }
+"""
+method=method.replace(anchor,candidate_code+anchor,1)
+s=s[:start]+method+s[end:]
+p.write_text(s)
+
+# Preserve photos previously saved on a purchase too when an unreliable filter
+# decides zero images should be accepted.
+p=Path('app/lib/purchases.dart')
+s=p.read_text()
+start=s.index('  Future<void> _smartFilterAndCachePurchaseGmailPhotos() async {')
+end=s.index('  Future<void> _showRejectedPurchaseGmailPhotos() async {',start)
+method=s[start:end]
+anchor="    if (accepted.isEmpty) {\n"
+if method.count(anchor)!=1:
+    raise SystemExit('Gmail v46: purchase previously-saved check changed')
+preserve="""    if (accepted.isEmpty) {
+      final previousUrls = <String>{
+        ...dynList(widget.existing?['emailPhotoUrls'])
+            .map((e) => e.toString().trim()),
+        ...dynList(widget.existing?['emailAttachmentImages'])
+            .whereType<Map>()
+            .map((e) => (e['url'] ?? '').toString().trim()),
+      };
+      final keep = <String>{
+        ...accepted.map((e) => (e['url'] ?? '').toString().trim()),
+      };
+      for (final image in allImages) {
+        final url = (image['url'] ?? '').toString().trim();
+        if (url.isEmpty || !previousUrls.contains(url) ||
+            hiddenGmailPurchasePhotoUrls.contains(url) || !keep.add(url)) continue;
+        accepted.add({...image, 'photoClass': 'previously_saved'});
+      }
+      rejected.removeWhere((e) => keep.contains((e['url'] ?? '').toString().trim()));
+    }
+"""
+method=method.replace(anchor,preserve+anchor,1)
+s=s[:start]+method+s[end:]
+p.write_text(s)
+print('Gmail v46: purchase editor also preserves cached candidates and existing photos.')
