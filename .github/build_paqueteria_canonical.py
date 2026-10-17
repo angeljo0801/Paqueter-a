@@ -66,6 +66,7 @@ PATCHES = [
     '.github/patch_native_local_storage_v38.py',
     '.github/patch_gmail_per_key_slots_v39.py',
     '.github/patch_gmail_stale_metadata_v40.py',
+    '.github/patch_gmail_photo_recovery_v41.py',
 ]
 
 for patch in PATCHES:
@@ -408,6 +409,16 @@ CHECKS['app/lib/extras.dart'] = [
     'await Store._writeRaw(snapshotKey, jsonEncode(snapshot))',
     'await Store._readRaw(snapshotKey)',
 ]
+
+CHECKS['app/lib/background_sync.dart'].extend([
+    "'_photosWaitingForEditor': true",
+    "_backgroundPhotoCandidates(rawResult, <String>{}).length",
+    "Abre el paquete para preparar fotos",
+])
+CHECKS['app/lib/packages.dart'].extend([
+    "Imágenes del correo por revisar",
+    "sin verificar; revisar manualmente",
+])
 
 missing = []
 for file_name, markers in CHECKS.items():
