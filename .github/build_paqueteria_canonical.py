@@ -62,6 +62,7 @@ PATCHES = [
     '.github/patch_gmail_verified_not_found_v35.py',
     '.github/patch_dashboard_local_first_v36.py',
     '.github/patch_courier_safe_merge_v36.py',
+    '.github/patch_startup_storage_recovery_v37.py',
 ]
 
 for patch in PATCHES:
@@ -321,6 +322,17 @@ CHECKS['app/lib/packages.dart'].extend([
 CHECKS['app/lib/background_sync.dart'].extend([
     "'gmailLookupTracking': tracking",
     "'gmailLookupStatus': 'found'",
+])
+
+CHECKS['app/lib/main.dart'].extend([
+    'final Completer<void> initialLocalDataReady',
+    'await initialLocalDataReady.future;',
+    'final Set<int> _visitedTabs = <int>{0}',
+    '_visitedTabs.contains(i)',
+    'Future<Object?> readSafely(String key) async',
+    'No se pudieron leer:',
+    'Reintentar leer datos',
+    'initialLocalDataReady.complete();',
 ])
 
 CHECKS['app/lib/main.dart'].extend([
