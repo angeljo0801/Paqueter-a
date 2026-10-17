@@ -179,7 +179,10 @@ jobs:
           # Old experimental workflows used 1000/3000/4000-based versionCodes.
           # Canonical releases use a much higher range so Android always accepts
           # them as updates instead of reporting "App not installed / couldn't update".
-          BUILD_NUMBER=$((200000 + GITHUB_RUN_NUMBER))
+          # Most recent canonical release used versionCode 100250.
+          # Use the next value, NOT a 200000 range that could block upgrades.
+          # The next production rollout must have a versionCode > 100251.
+          BUILD_NUMBER=100251
           echo "PAQUETERIA_BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
           flutter build apk --release --build-number "$BUILD_NUMBER"
 
