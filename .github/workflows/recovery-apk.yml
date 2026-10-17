@@ -1,0 +1,412 @@
+name: Build isolated Paqueteria recovery APK
+
+on:
+  push:
+    branches: ["recovery/pre-permissions-v2.6.38"]
+    paths:
+      - "paqueteria/**"
+      - ".github/build_paqueteria_canonical.py"
+      - ".github/patch_*.py"
+      - ".github/workflows/recovery-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: paqueteria-pre-permissions-recovery
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Verify persistent signing secrets
+        env:
+          PAQUETERIA_KEYSTORE_B64: ${{ secrets.PAQUETERIA_KEYSTORE_B64 }}
+          PAQUETERIA_KEYSTORE_PASSWORD: ${{ secrets.PAQUETERIA_KEYSTORE_PASSWORD }}
+          PAQUETERIA_KEY_ALIAS: ${{ secrets.PAQUETERIA_KEY_ALIAS }}
+          PAQUETERIA_KEY_PASSWORD: ${{ secrets.PAQUETERIA_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          missing=0
+          for name in PAQUETERIA_KEYSTORE_B64 PAQUETERIA_KEYSTORE_PASSWORD PAQUETERIA_KEY_ALIAS PAQUETERIA_KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing secret $name"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::Paqueteria will not publish an APK with temporary signing."
+            exit 1
+          fi
+
+      - name: Install SVG converter
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y librsvg2-bin
+
+      - name: Create Android scaffold from canonical source
+        run: |
+          flutter create --platforms=android --org com.angelapps --project-name paqueteria app
+          rm -rf app/lib app/test
+          cp -R paqueteria/lib app/lib
+          cp paqueteria/pubspec.yaml app/pubspec.yaml
+          mkdir -p app/assets
+          rsvg-convert -w 1024 -h 1024 paqueteria/assets/icon.svg -o app/assets/icon.png
+
+      - name: Verify isolated baseline and avoid regression patches
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          source = Path('.github/build_paqueteria_canonical.py').read_text()
+          version = Path('paqueteria/pubspec.yaml').read_text()
+          assert re.search(r'^version: 2[.]6[.]49[+]83
+        run: python3 .github/build_paqueteria_canonical.py
+
+      - name: Configure stable signing and package identity
+        working-directory: app
+        env:
+          PAQUETERIA_KEYSTORE_B64: ${{ secrets.PAQUETERIA_KEYSTORE_B64 }}
+          PAQUETERIA_KEYSTORE_PASSWORD: ${{ secrets.PAQUETERIA_KEYSTORE_PASSWORD }}
+          PAQUETERIA_KEY_ALIAS: ${{ secrets.PAQUETERIA_KEY_ALIAS }}
+          PAQUETERIA_KEY_PASSWORD: ${{ secrets.PAQUETERIA_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          normalize_secret() {
+            local name="$1"
+            local raw="$2"
+            if printf '%s' "$raw" | grep -q "$name="; then
+              printf '%s\n' "$raw" | sed -n "s/^.*${name}[[:space:]]*=[[:space:]]*//p" | head -n 1 | tr -d '\r'
+            else
+              printf '%s' "$raw" | tr -d '\r'
+            fi
+          }
+          export PAQUETERIA_KEYSTORE_B64="$(normalize_secret PAQUETERIA_KEYSTORE_B64 "$PAQUETERIA_KEYSTORE_B64" | tr -cd 'A-Za-z0-9+/=')"
+          export PAQUETERIA_KEYSTORE_PASSWORD="$(normalize_secret PAQUETERIA_KEYSTORE_PASSWORD "$PAQUETERIA_KEYSTORE_PASSWORD")"
+          export PAQUETERIA_KEY_ALIAS="$(normalize_secret PAQUETERIA_KEY_ALIAS "$PAQUETERIA_KEY_ALIAS")"
+          export PAQUETERIA_KEY_PASSWORD="$(normalize_secret PAQUETERIA_KEY_PASSWORD "$PAQUETERIA_KEY_PASSWORD")"
+          printf '%s' "$PAQUETERIA_KEYSTORE_B64" | base64 --decode > android/app/paqueteria-release.jks
+          python3 - <<'PY'
+          from pathlib import Path
+          import os, re
+
+          p = Path('android/app/build.gradle.kts')
+          s = p.read_text()
+          s = re.sub(r'namespace\s*=\s*"[^"]+"', 'namespace = "com.angelapps.paqueteria"', s, count=1)
+          s = re.sub(r'applicationId\s*=\s*"[^"]+"', 'applicationId = "com.angelapps.paqueteria"', s, count=1)
+
+          alias = os.environ.get('PAQUETERIA_KEY_ALIAS', '').strip()
+          store_password = os.environ.get('PAQUETERIA_KEYSTORE_PASSWORD', '').strip()
+          key_password = os.environ.get('PAQUETERIA_KEY_PASSWORD', '').strip()
+          keystore = Path('android/app/paqueteria-release.jks')
+          if not (keystore.exists() and alias and store_password and key_password):
+              raise SystemExit('Stable signing configuration is incomplete')
+
+          def esc(value):
+              return value.replace('\\', '\\\\').replace('"', '\\"')
+
+          block = '''    signingConfigs {
+              create("paqueteriaRelease") {
+                  keyAlias = "''' + esc(alias) + '''"
+                  keyPassword = "''' + esc(key_password) + '''"
+                  storeFile = file("paqueteria-release.jks")
+                  storePassword = "''' + esc(store_password) + '''"
+              }
+          }
+
+          '''
+          if 'create("paqueteriaRelease")' not in s:
+              s = s.replace('    buildTypes {', block + '    buildTypes {', 1)
+          s = re.sub(
+              r'(getByName\("release"\)\s*\{)(.*?)(\n\s*\})',
+              lambda m: m.group(1) + m.group(2) + '\n            signingConfig = signingConfigs.getByName("paqueteriaRelease")' + m.group(3),
+              s,
+              count=1,
+              flags=re.S,
+          )
+          p.write_text(s)
+          PY
+
+      - name: Get dependencies
+        working-directory: app
+        run: flutter pub get
+
+      - name: Generate launcher icon
+        working-directory: app
+        run: dart run flutter_launcher_icons
+
+      - name: Analyze canonical source
+        working-directory: app
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings lib
+
+      - name: Build release APK with permanently increasing versionCode
+        working-directory: app
+        shell: bash
+        run: |
+          # Old experimental workflows used 1000/3000/4000-based versionCodes.
+          # Canonical releases use a much higher range so Android always accepts
+          # them as updates instead of reporting "App not installed / couldn't update".
+          BUILD_NUMBER=$((200000 + GITHUB_RUN_NUMBER))
+          echo "PAQUETERIA_BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
+          flutter build apk --release --build-number "$BUILD_NUMBER"
+
+      - name: Apply persistent APK signature
+        working-directory: app
+        env:
+          PAQUETERIA_KEYSTORE_B64: ${{ secrets.PAQUETERIA_KEYSTORE_B64 }}
+          PAQUETERIA_KEYSTORE_PASSWORD: ${{ secrets.PAQUETERIA_KEYSTORE_PASSWORD }}
+          PAQUETERIA_KEY_ALIAS: ${{ secrets.PAQUETERIA_KEY_ALIAS }}
+          PAQUETERIA_KEY_PASSWORD: ${{ secrets.PAQUETERIA_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          normalize_secret() {
+            local name="$1"
+            local raw="$2"
+            if printf '%s' "$raw" | grep -q "$name="; then
+              printf '%s\n' "$raw" | sed -n "s/^.*${name}[[:space:]]*=[[:space:]]*//p" | head -n 1 | tr -d '\r'
+            else
+              printf '%s' "$raw" | tr -d '\r'
+            fi
+          }
+          KEYSTORE_B64="$(normalize_secret PAQUETERIA_KEYSTORE_B64 "$PAQUETERIA_KEYSTORE_B64" | tr -cd 'A-Za-z0-9+/=')"
+          STORE_PASSWORD="$(normalize_secret PAQUETERIA_KEYSTORE_PASSWORD "$PAQUETERIA_KEYSTORE_PASSWORD")"
+          KEY_ALIAS="$(normalize_secret PAQUETERIA_KEY_ALIAS "$PAQUETERIA_KEY_ALIAS")"
+          KEY_PASSWORD="$(normalize_secret PAQUETERIA_KEY_PASSWORD "$PAQUETERIA_KEY_PASSWORD")"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > android/app/paqueteria-release.jks
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -n "$APKSIGNER"
+          "$APKSIGNER" sign \
+            --ks android/app/paqueteria-release.jks \
+            --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass "pass:$STORE_PASSWORD" \
+            --key-pass "pass:$KEY_PASSWORD" \
+            --out build/app/outputs/flutter-apk/app-release-stable.apk \
+            build/app/outputs/flutter-apk/app-release.apk
+          mv build/app/outputs/flutter-apk/app-release-stable.apk build/app/outputs/flutter-apk/app-release.apk
+          "$APKSIGNER" verify --verbose build/app/outputs/flutter-apk/app-release.apk
+          rm -f android/app/paqueteria-release.jks
+
+      - name: Record canonical build identity
+        working-directory: app
+        shell: bash
+        run: |
+          {
+            echo "applicationId=com.angelapps.paqueteria"
+            echo "buildNumber=$PAQUETERIA_BUILD_NUMBER"
+            echo "signing=persistent"
+            echo "buildPath=canonical"
+            echo "sourceCommit=$GITHUB_SHA"
+            echo "featureSet=pre-permissions-v2.6.38-baseline"
+          } > build/app/outputs/flutter-apk/BUILD_IDENTITY.txt
+
+      - name: Name APK from app version
+        id: version
+        shell: bash
+        run: |
+          VERSION="$(awk '/^version:/{print $2}' paqueteria/pubspec.yaml | cut -d+ -f1)"
+          APK="Paqueteria-RECOVERY-v${VERSION}.apk"
+          cp app/build/app/outputs/flutter-apk/app-release.apk "$APK"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "apk=$APK" >> "$GITHUB_OUTPUT"
+
+      - name: Upload canonical workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Paqueteria-RECOVERY-v${{ steps.version.outputs.version }}-TEST-ONLY
+          path: |
+            ${{ steps.version.outputs.apk }}
+            app/build/app/outputs/flutter-apk/BUILD_IDENTITY.txt
+          retention-days: 30
+
+, version, re.M), 'Wrong recovery APK version'
+          for patch in [
+              'patch_native_local_storage_v38.py',
+              'patch_gmail_per_key_slots_v39.py',
+              'patch_gmail_stale_metadata_v40.py',
+              'patch_gmail_photo_recovery_v41.py',
+              'patch_gmail_verified_not_found_v35.py',
+              'patch_dashboard_local_first_v36.py',
+              'patch_startup_storage_recovery_v37.py',
+          ]:
+              assert patch not in source, f'Unexpected later modification: {patch}'
+          for marker in [
+              'patch_gmail_photo_persistence_order_v12.py',
+              'patch_gmail_background_defer_photo_processing_v13.py',
+              'patch_gmail_server_background_pipeline_v14.py',
+              'patch_package_purchase_links.py',
+          ]:
+              assert marker in source, f'Missing baseline feature: {marker}'
+          print('Original Gmail photo pipeline and purchase links are retained.')
+          PY
+
+      - name: Apply and verify complete Paqueteria feature set
+        run: python3 .github/build_paqueteria_canonical.py
+
+      - name: Configure stable signing and package identity
+        working-directory: app
+        env:
+          PAQUETERIA_KEYSTORE_B64: ${{ secrets.PAQUETERIA_KEYSTORE_B64 }}
+          PAQUETERIA_KEYSTORE_PASSWORD: ${{ secrets.PAQUETERIA_KEYSTORE_PASSWORD }}
+          PAQUETERIA_KEY_ALIAS: ${{ secrets.PAQUETERIA_KEY_ALIAS }}
+          PAQUETERIA_KEY_PASSWORD: ${{ secrets.PAQUETERIA_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          normalize_secret() {
+            local name="$1"
+            local raw="$2"
+            if printf '%s' "$raw" | grep -q "$name="; then
+              printf '%s\n' "$raw" | sed -n "s/^.*${name}[[:space:]]*=[[:space:]]*//p" | head -n 1 | tr -d '\r'
+            else
+              printf '%s' "$raw" | tr -d '\r'
+            fi
+          }
+          export PAQUETERIA_KEYSTORE_B64="$(normalize_secret PAQUETERIA_KEYSTORE_B64 "$PAQUETERIA_KEYSTORE_B64" | tr -cd 'A-Za-z0-9+/=')"
+          export PAQUETERIA_KEYSTORE_PASSWORD="$(normalize_secret PAQUETERIA_KEYSTORE_PASSWORD "$PAQUETERIA_KEYSTORE_PASSWORD")"
+          export PAQUETERIA_KEY_ALIAS="$(normalize_secret PAQUETERIA_KEY_ALIAS "$PAQUETERIA_KEY_ALIAS")"
+          export PAQUETERIA_KEY_PASSWORD="$(normalize_secret PAQUETERIA_KEY_PASSWORD "$PAQUETERIA_KEY_PASSWORD")"
+          printf '%s' "$PAQUETERIA_KEYSTORE_B64" | base64 --decode > android/app/paqueteria-release.jks
+          python3 - <<'PY'
+          from pathlib import Path
+          import os, re
+
+          p = Path('android/app/build.gradle.kts')
+          s = p.read_text()
+          s = re.sub(r'namespace\s*=\s*"[^"]+"', 'namespace = "com.angelapps.paqueteria"', s, count=1)
+          s = re.sub(r'applicationId\s*=\s*"[^"]+"', 'applicationId = "com.angelapps.paqueteria"', s, count=1)
+
+          alias = os.environ.get('PAQUETERIA_KEY_ALIAS', '').strip()
+          store_password = os.environ.get('PAQUETERIA_KEYSTORE_PASSWORD', '').strip()
+          key_password = os.environ.get('PAQUETERIA_KEY_PASSWORD', '').strip()
+          keystore = Path('android/app/paqueteria-release.jks')
+          if not (keystore.exists() and alias and store_password and key_password):
+              raise SystemExit('Stable signing configuration is incomplete')
+
+          def esc(value):
+              return value.replace('\\', '\\\\').replace('"', '\\"')
+
+          block = '''    signingConfigs {
+              create("paqueteriaRelease") {
+                  keyAlias = "''' + esc(alias) + '''"
+                  keyPassword = "''' + esc(key_password) + '''"
+                  storeFile = file("paqueteria-release.jks")
+                  storePassword = "''' + esc(store_password) + '''"
+              }
+          }
+
+          '''
+          if 'create("paqueteriaRelease")' not in s:
+              s = s.replace('    buildTypes {', block + '    buildTypes {', 1)
+          s = re.sub(
+              r'(getByName\("release"\)\s*\{)(.*?)(\n\s*\})',
+              lambda m: m.group(1) + m.group(2) + '\n            signingConfig = signingConfigs.getByName("paqueteriaRelease")' + m.group(3),
+              s,
+              count=1,
+              flags=re.S,
+          )
+          p.write_text(s)
+          PY
+
+      - name: Get dependencies
+        working-directory: app
+        run: flutter pub get
+
+      - name: Generate launcher icon
+        working-directory: app
+        run: dart run flutter_launcher_icons
+
+      - name: Analyze canonical source
+        working-directory: app
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings lib
+
+      - name: Build release APK with permanently increasing versionCode
+        working-directory: app
+        shell: bash
+        run: |
+          # Old experimental workflows used 1000/3000/4000-based versionCodes.
+          # Canonical releases use a much higher range so Android always accepts
+          # them as updates instead of reporting "App not installed / couldn't update".
+          BUILD_NUMBER=$((200000 + GITHUB_RUN_NUMBER))
+          echo "PAQUETERIA_BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
+          flutter build apk --release --build-number "$BUILD_NUMBER"
+
+      - name: Apply persistent APK signature
+        working-directory: app
+        env:
+          PAQUETERIA_KEYSTORE_B64: ${{ secrets.PAQUETERIA_KEYSTORE_B64 }}
+          PAQUETERIA_KEYSTORE_PASSWORD: ${{ secrets.PAQUETERIA_KEYSTORE_PASSWORD }}
+          PAQUETERIA_KEY_ALIAS: ${{ secrets.PAQUETERIA_KEY_ALIAS }}
+          PAQUETERIA_KEY_PASSWORD: ${{ secrets.PAQUETERIA_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          normalize_secret() {
+            local name="$1"
+            local raw="$2"
+            if printf '%s' "$raw" | grep -q "$name="; then
+              printf '%s\n' "$raw" | sed -n "s/^.*${name}[[:space:]]*=[[:space:]]*//p" | head -n 1 | tr -d '\r'
+            else
+              printf '%s' "$raw" | tr -d '\r'
+            fi
+          }
+          KEYSTORE_B64="$(normalize_secret PAQUETERIA_KEYSTORE_B64 "$PAQUETERIA_KEYSTORE_B64" | tr -cd 'A-Za-z0-9+/=')"
+          STORE_PASSWORD="$(normalize_secret PAQUETERIA_KEYSTORE_PASSWORD "$PAQUETERIA_KEYSTORE_PASSWORD")"
+          KEY_ALIAS="$(normalize_secret PAQUETERIA_KEY_ALIAS "$PAQUETERIA_KEY_ALIAS")"
+          KEY_PASSWORD="$(normalize_secret PAQUETERIA_KEY_PASSWORD "$PAQUETERIA_KEY_PASSWORD")"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > android/app/paqueteria-release.jks
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -n "$APKSIGNER"
+          "$APKSIGNER" sign \
+            --ks android/app/paqueteria-release.jks \
+            --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass "pass:$STORE_PASSWORD" \
+            --key-pass "pass:$KEY_PASSWORD" \
+            --out build/app/outputs/flutter-apk/app-release-stable.apk \
+            build/app/outputs/flutter-apk/app-release.apk
+          mv build/app/outputs/flutter-apk/app-release-stable.apk build/app/outputs/flutter-apk/app-release.apk
+          "$APKSIGNER" verify --verbose build/app/outputs/flutter-apk/app-release.apk
+          rm -f android/app/paqueteria-release.jks
+
+      - name: Record canonical build identity
+        working-directory: app
+        shell: bash
+        run: |
+          {
+            echo "applicationId=com.angelapps.paqueteria"
+            echo "buildNumber=$PAQUETERIA_BUILD_NUMBER"
+            echo "signing=persistent"
+            echo "buildPath=canonical"
+            echo "sourceCommit=$GITHUB_SHA"
+            echo "featureSet=pre-permissions-v2.6.38-baseline"
+          } > build/app/outputs/flutter-apk/BUILD_IDENTITY.txt
+
+      - name: Name APK from app version
+        id: version
+        shell: bash
+        run: |
+          VERSION="$(awk '/^version:/{print $2}' paqueteria/pubspec.yaml | cut -d+ -f1)"
+          APK="Paqueteria-RECOVERY-v${VERSION}.apk"
+          cp app/build/app/outputs/flutter-apk/app-release.apk "$APK"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "apk=$APK" >> "$GITHUB_OUTPUT"
+
+      - name: Upload canonical workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Paqueteria-RECOVERY-v${{ steps.version.outputs.version }}-TEST-ONLY
+          path: |
+            ${{ steps.version.outputs.apk }}
+            app/build/app/outputs/flutter-apk/BUILD_IDENTITY.txt
+          retention-days: 30
+
