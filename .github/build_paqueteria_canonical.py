@@ -57,6 +57,7 @@ PATCHES = [
     '.github/patch_migration_json_merge.py',
     '.github/patch_package_purchase_links.py',
     '.github/patch_recovery_storage_boot_v43.py',
+    '.github/patch_recovery_gmail_slots_v44.py',
 ]
 
 for patch in PATCHES:
@@ -328,6 +329,15 @@ CHECKS['app/lib/extras.dart'].extend([
 CHECKS['app/lib/packages.dart'].extend([
     "_smartFilterAndCacheGmailPhotos",
     "showGmailRejectedPhotoGrid",
+])
+
+CHECKS['app/lib/main.dart'].extend([
+    'static Future<void> _removeRaw(String key) async',
+])
+CHECKS['app/lib/background_sync.dart'].extend([
+    'class _GmailPreferenceView',
+    'final prefs = await _GmailPreferenceView.open(slot);',
+    'La búsqueda de Gmail falló antes de completarse',
 ])
 
 missing = []
