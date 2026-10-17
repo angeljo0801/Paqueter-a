@@ -71,9 +71,8 @@ one("    if (rawUrl.isEmpty) continue;",
         (originalUrl.isNotEmpty && deliveryProofUrls.contains(originalUrl)) ||
         proofFromUrl;""",
     'proof from source metadata')
-one('if (ocrBudget > 0 && (suspiciousShape || score < 3)) {',
-    'if (ocrBudget > 0 && (suspiciousShape || score < 3 || deliveryProofHint)) {',
-    'run OCR on delivery proof')
+# Photo filter v2 already performs OCR on every available candidate.
+# Keep that behavior; the delivery-proof decision below consumes its result.
 one('      final learnedDecision =', '      final learnedDecision =', 'dummy') if False else None
 # Learning state uses v47 safe wrapping. Run proof filter BEFORE learned rules.
 anchor="      GmailPhotoLearningDecision learnedDecision;"
