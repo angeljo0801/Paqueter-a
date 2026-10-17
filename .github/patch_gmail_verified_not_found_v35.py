@@ -152,16 +152,18 @@ s = one(s,
 """,
 'recovered background success ties source to tracking')
 
-s = one(s,
+save_start = s.index('  Future<void> save() async {')
+save_end = s.index('\n  @override', save_start)
+save_method = s[save_start:save_end]
+save_method = one(save_method,
 """      'gmailEstimatedDelivery': gmailEta.text.trim(),
-      'emailPhotoUrls': emailPhotoUrls,
 """,
 """      'gmailEstimatedDelivery': _gmailNotFoundForCurrent ? '' : gmailEta.text.trim(),
       'gmailLookupStatus': gmailVerifiedLookupStatus,
       'gmailLookupTracking': gmailVerifiedTracking,
-      'emailPhotoUrls': emailPhotoUrls,
 """,
 'persist editor lookup status')
+s = s[:save_start] + save_method + s[save_end:]
 
 s = one(s,
 """      'gmailSourceEmails': gmailSourceEmails,
