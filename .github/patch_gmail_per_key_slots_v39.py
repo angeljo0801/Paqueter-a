@@ -141,7 +141,7 @@ for method_name in slot_methods:
     starts = [
         i for i in [
             body.find('\n  static ', lo + 8),
-            body.find('\n  @pragma(, lo + 8),
+            body.find('\n  @pragma(', lo + 8),
         ] if i >= 0
     ]
     hi = min(starts) if starts else len(body)
