@@ -72,7 +72,7 @@ jobs:
           from pathlib import Path
           src = Path('.github/build_paqueteria_canonical.py').read_text()
           version = Path('paqueteria/pubspec.yaml').read_text()
-          assert 'version: 2.6.49+83' in version
+          assert 'version: 2.6.50+84' in version
           for missing in [
               'patch_native_local_storage_v38.py',
               'patch_gmail_per_key_slots_v39.py',
@@ -81,6 +81,7 @@ jobs:
               'patch_gmail_verified_not_found_v35.py',
               'patch_dashboard_local_first_v36.py',
               'patch_startup_storage_recovery_v37.py',
+              'patch_gmail_per_key_slots_v39.py',
           ]:
               assert missing not in src, f'unexpected patch in recovery: {missing}'
           for required in [
@@ -90,6 +91,7 @@ jobs:
               'patch_package_purchase_links.py',
           ]:
               assert required in src, f'missing original feature: {required}'
+          assert 'patch_recovery_storage_boot_v43.py' in src, 'Missing targeted storage boot fix'
           print('Validated Gmail photo baseline and purchase linking.')
           PY
 
@@ -181,8 +183,8 @@ jobs:
           # them as updates instead of reporting "App not installed / couldn't update".
           # Most recent canonical release used versionCode 100250.
           # Use the next value, NOT a 200000 range that could block upgrades.
-          # The next production rollout must have a versionCode > 100251.
-          BUILD_NUMBER=100251
+          # The next production rollout must have a versionCode > 100252.
+          BUILD_NUMBER=100252
           echo "PAQUETERIA_BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
           flutter build apk --release --build-number "$BUILD_NUMBER"
 
