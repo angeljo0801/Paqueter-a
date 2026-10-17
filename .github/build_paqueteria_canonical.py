@@ -327,7 +327,7 @@ CHECKS['app/lib/background_sync.dart'].extend([
 
 CHECKS['app/lib/main.dart'].extend([
     'final Completer<void> initialLocalDataReady',
-    'await initialLocalDataReady.future;',
+    'unawaited(initialLocalDataReady.future.then((_) async {',
     'final Set<int> _visitedTabs = <int>{0}',
     '_visitedTabs.contains(i)',
     'Future<Object?> readSafely(String key) async',
