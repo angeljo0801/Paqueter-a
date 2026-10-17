@@ -50,7 +50,8 @@ new = """  bool courierSyncing = false;
   Future<void> load({bool syncCourier = false}) async {
     try {
       final r = await Future.wait(["""
-if(s.split(old).length!==2)raise SystemExit('Startup patch: dashboard loading anchor changed')
+if s.count(old) != 1:
+    raise SystemExit('Startup patch: dashboard loading anchor changed')
 s=s.replace(old,new)
 old2="""      Store.settings(),
     ]);
