@@ -72,7 +72,7 @@ jobs:
           from pathlib import Path
           src = Path('.github/build_paqueteria_canonical.py').read_text()
           version = Path('paqueteria/pubspec.yaml').read_text()
-          assert 'version: 2.6.51+85' in version
+          assert 'version: 2.6.52+86' in version
           for missing in [
               'patch_native_local_storage_v38.py',
               'patch_gmail_per_key_slots_v39.py',
@@ -93,6 +93,7 @@ jobs:
               assert required in src, f'missing original feature: {required}'
           assert 'patch_recovery_storage_boot_v43.py' in src, 'Missing targeted storage boot fix'
           assert 'patch_recovery_gmail_slots_v44.py' in src, 'Missing native Gmail state fix'
+          assert 'patch_recovery_photo_integrity_v46.py' in src, 'Missing Gmail photo integrity fix'
           print('Validated Gmail photo baseline and purchase linking.')
           PY
 
