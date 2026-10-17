@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 p = Path('app/lib/main.dart')
 s = p.read_text()
@@ -123,12 +124,35 @@ body=body.replace(old,new)
 if 'SharedPreferences prefs,' not in body:
     raise SystemExit('Gmail v39: finished-result helper signature not found')
 body=body.replace('SharedPreferences prefs,','_GmailPreferenceView prefs,')
-other=body.count(expected)
-if other < 4: raise SystemExit('Gmail v39: worker/finish methods not found')
-body=body.replace(expected,'    final prefs = await _GmailPreferenceView.open(slot);')
+# Only the slot-specific methods have a slot variable. The photo/cache
+# routines deliberately retain their own preferences object until migrated
+# separately, so their package accesses are never mistaken for Gmail keys.
+slot_methods = [
+    '_finishBackgroundSnapshot', '_persistBackgroundError',
+    'execute', 'collectServerJob',
+]
+for method_name in slot_methods:
+    signature = re.search(
+        r'  static Future<[^\\n]*> ' + method_name + r'\\(', body,
+    )
+    if signature is None:
+        raise SystemExit('Gmail v39: missing slot method ' + method_name)
+    lo = signature.start()
+    starts = [
+        i for i in [
+            body.find('\\n  static ', lo + 8),
+            body.find('\\n  @pragma(', lo + 8),
+        ] if i >= 0
+    ]
+    hi = min(starts) if starts else len(body)
+    block = body[lo:hi]
+    if block.count(expected) != 1:
+        raise SystemExit('Gmail v39: unexpected prefs init in ' + method_name)
+    block = block.replace(expected, '    final prefs = await _GmailPreferenceView.open(slot);', 1)
+    body = body[:lo] + block + body[hi:]
 
-if 'SharedPreferences.getInstance()' in body:
-    raise SystemExit('Gmail v39: found unconverted all-keys access in Gmail class')
+if body.count(expected) > 3:
+    raise SystemExit('Gmail v39: unexpected unconverted preferences accesses')
 s=s[:start]+body+s[end:]
 p.write_text(s)
 print(f'Gmail v39: migrated {number} Gmail lookup preference usages to native per-key reads.')
