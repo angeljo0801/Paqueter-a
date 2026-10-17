@@ -6,7 +6,7 @@ Restaurar el flujo de Gmail y de fotos sin trasladar automáticamente los cambio
 ## Referencia
 - Fuente original: tag **v2.6.38** (15 de octubre de 2026).
 - Rama aislada: `recovery/pre-permissions-v2.6.38`.
-- APK de prueba: versión **2.6.49**, `versionCode` independiente superior al utilizado por las APK canónicas recientes.
+- APK de prueba: versión **2.6.49**, `versionCode` **100251** (la última compilación oficial antes de la prueba era **100250**). La siguiente actualización oficial debe compilarse con un `versionCode` mayor que **100251**.
 - Mismo `applicationId` y la misma firma persistente, para permitir la actualización sin desinstalar.
 - No se publica GitHub Release ni se actualiza `main`.
 
