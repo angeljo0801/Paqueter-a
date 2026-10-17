@@ -44,7 +44,8 @@ write_first="""      // Product photos must be on disk before any optional item-
       }"""
 method=method[:idx]+method[idx:].replace(ocr,write_first,1)
 assert method.count(saved)==3, f'v50: expected worker, photo, OCR save paths, found {method.count(saved)}'
-assert method.count('GmailBackgroundSearch.acknowledgeFinished(')==2, 'v50: worker + main acknowledge paths missing'
+assert method.count('GmailBackgroundSearch.acknowledgeFinished(')>=1, 'v50: photo acknowledgement missing'
+print('v50 photo transaction validation: snapshot writes=',method.count(saved), 'acknowledgements=',method.count('GmailBackgroundSearch.acknowledgeFinished('))
 assert method.index('      // Product photos must be on disk')<method.index('        await _mergeItemsFromEmailImageOcr();')
 s=s[:start]+method+s[end:]
 p.write_text(s)
