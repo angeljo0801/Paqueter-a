@@ -59,6 +59,7 @@ PATCHES = [
     '.github/patch_gmail_actionable_errors_v32.py',
     '.github/patch_gmail_client_scope_worker_v33.py',
     '.github/patch_gmail_permission_diagnostics_v34.py',
+    '.github/patch_gmail_verified_not_found_v35.py',
 ]
 
 for patch in PATCHES:
@@ -300,6 +301,25 @@ CHECKS = {
         'await BackgroundCourierSync.initializeAndSchedule();',
     ],
 }
+
+CHECKS['app/lib/gmail_purchase_link.dart'].extend([
+    "'gmailLookupTracking': tracking.trim()",
+    "'gmailSourceEmails': <String>[]",
+    "final isNotFound = state == 'not_found'",
+    "gmailRecordIsLinked(Map<String, dynamic> record)",
+])
+CHECKS['app/lib/packages.dart'].extend([
+    'No encontrado en Gmail',
+    '_gmailVerifiedForCurrent',
+    '_gmailNotFoundForCurrent',
+    "'gmailLookupStatus': gmailVerifiedLookupStatus",
+    "'gmailLookupTracking': gmailVerifiedTracking",
+    'gmailSourceEmails.clear()',
+])
+CHECKS['app/lib/background_sync.dart'].extend([
+    "'gmailLookupTracking': tracking",
+    "'gmailLookupStatus': 'found'",
+])
 
 CHECKS['app/lib/gmail_accounts.dart'].extend([
     'Comprobar permisos de Gmail',
