@@ -253,4 +253,56 @@ s=s[:start]+r'''  static Future<void> saveSettings(Map<String, dynamic> value) a
     unawaited(FinanceSyncService.refreshSnapshot());
   }'''+s[end:]
 p.write_text(s)
+
+# Never keep main() awaiting a future that depends on the UI becoming ready.
+# Only start backup / WhatsBot once local data has been verified.
+p = Path('app/lib/main.dart')
+s = p.read_text()
+if s.count('  await initialLocalDataReady.future;') != 1:
+    raise SystemExit('v38: main readiness gate changed')
+s = s.replace('  await initialLocalDataReady.future;', '''
+  unawaited(initialLocalDataReady.future.then((_) async {
+    try {
+      await PaqueteriaBackupService.autoBackupIfDue();
+    } catch (_) {}
+    try {
+      await WhatsBotPurchaseSyncService.syncSilently();
+    } catch (_) {}
+  }));''', 1)
+old = '''  try {
+    await PaqueteriaBackupService.autoBackupIfDue();
+  } catch (_) {}
+  await WhatsBotPurchaseSyncService.syncSilently();
+}'''
+if s.count(old) != 1: raise SystemExit('v38: old backup block not found')
+s=s.replace(old,'}',1)
+
+# Give chunk reads time to finish without marking every collection as lost.
+key = "return await Store.list(key).timeout(const Duration(seconds: 10));"
+if s.count(key) != 1: raise SystemExit('v38: local read timeout changed')
+s=s.replace(key, "return await Store.list(key).timeout(const Duration(seconds: 30));",1)
+key = "return await Store.settings().timeout(const Duration(seconds: 10));"
+if s.count(key) != 1: raise SystemExit('v38: settings timeout changed')
+s=s.replace(key, "return await Store.settings().timeout(const Duration(seconds: 30));",1)
+p.write_text(s)
+
+# Finance snapshots also use the per-key bridge; they must never be able to
+# block the now-working package saves through the legacy getAll() call.
+p = Path('app/lib/extras.dart')
+s = p.read_text()
+old = """      final p = await SharedPreferences.getInstance();
+      await p.setString(snapshotKey, jsonEncode(snapshot));
+      await p.setString(syncedAtKey, generatedAt);"""
+new = """      await Store._writeRaw(snapshotKey, jsonEncode(snapshot));
+      await Store._writeRaw(syncedAtKey, generatedAt);"""
+if s.count(old) != 1: raise SystemExit('v38: finance snapshot writer mismatch')
+s=s.replace(old,new,1)
+old="""    final p = await SharedPreferences.getInstance();
+    final raw = p.getString(snapshotKey);"""
+if s.count(old)!=1: raise SystemExit('v38: finance snapshot reader mismatch')
+s=s.replace(old,"    final raw = await Store._readRaw(snapshotKey);",1)
+p.write_text(s)
+
+print('v38: backup after verified local readiness, finance sync uses same per-key storage.')
+
 print('v38 per-key native preferences: original data preserved, no getAll IPC.')
