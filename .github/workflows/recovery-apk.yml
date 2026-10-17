@@ -185,8 +185,8 @@ jobs:
           # them as updates instead of reporting "App not installed / couldn't update".
           # Most recent canonical release used versionCode 100250.
           # Use the next value, NOT a 200000 range that could block upgrades.
-          # The next production rollout must have a versionCode > 100253.
-          BUILD_NUMBER=100253
+          # Future production releases must use a versionCode greater than 100254.
+          BUILD_NUMBER=100254
           echo "PAQUETERIA_BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
           flutter build apk --release --build-number "$BUILD_NUMBER"
 
