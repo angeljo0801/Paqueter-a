@@ -376,7 +376,7 @@ CHECKS['app/lib/gmail_purchase_link.dart'].extend([
     "return compressed == 'shein' || compressed == 'temu';",
     'trustedProductShape',
     'analysisRaw != rawUrl',
-    'if (score < 2 && !trustedProductShape)',
+    'if (score < 2 && !trustedProductShape && !sectionProduct)',
 ])
 CHECKS['app/lib/packages.dart'].extend([
     'for (final key in <String>[cached, original])',
