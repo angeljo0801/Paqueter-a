@@ -91,6 +91,7 @@ PATCHES = [
     '.github/patch_recovery_trash_package_details_v76.py',
     '.github/patch_recovery_packages_refresh_v77.py',
     '.github/patch_recovery_new_package_visibility_v78.py',
+    '.github/patch_recovery_sort_clients_trash_search_v79.py',
 ]
 
 for patch in PATCHES:
@@ -347,6 +348,18 @@ CHECKS['app/lib/package_purchase_links.dart'] = [
     'class PackagePurchaseLinks', 'choosePurchases(', 'choosePackagesForPurchase(',
     "'purchaseIds'", "'purchaseId'",
 ]
+CHECKS['app/lib/packages.dart'].extend([
+    "tooltip: 'Ordenar paquetes'",
+    "_sortVisiblePackages(f)",
+    "_choosePackageClient",
+    "Buscar cliente por nombre",
+    "'createdAt':",
+])
+CHECKS['app/lib/extras.dart'].extend([
+    "Buscar en papelera",
+    "No hay resultados en papelera.",
+    "Tracking, cliente, nombre o tipo",
+])
 CHECKS['app/lib/packages.dart'].extend([
     "_afterPackageEditor",
     "Mostrar todos los paquetes",
