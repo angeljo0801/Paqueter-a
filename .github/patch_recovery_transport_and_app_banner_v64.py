@@ -187,7 +187,7 @@ a=s.index('  Future<void> _smartFilterAndCacheGmailPhotos() async {')
 b=s.index('  Future<void> _showRejectedGmailPhotos() async {',a)
 fn=s[a:b]
 original="""        .where((e) => e['photoClass'] == 'store_wordmark' ||
-              e['rejectReason'] == 'logotipo de tienda (no artículo)')"""
+            e['rejectReason'] == 'logotipo de tienda (no artículo)')"""
 replacement="""        .where((e) => e['photoClass'] == 'store_wordmark' ||
               e['photoClass'] == 'logistics_icon' ||
               e['photoClass'] == 'app_install_banner' ||
@@ -212,7 +212,6 @@ fn=fn.replace(old,new,1)
 s=s[:a]+fn+s[b:]
 p.write_text(s)
 
-assert 'gmailLooksLikeSolidColorDeliveryGlyph(bytes, width, height)' in
-Path('app/lib/gmail_purchase_link.dart').read_text()
+assert 'gmailLooksLikeSolidColorDeliveryGlyph(bytes, width, height)' in Path('app/lib/gmail_purchase_link.dart').read_text()
 assert 'gmailTemuInstallText(ocr)' in Path('app/lib/gmail_purchase_link.dart').read_text()
 print('v64: green Temu transport icon and orange app-install banner rejected; product shirt preserved.')
