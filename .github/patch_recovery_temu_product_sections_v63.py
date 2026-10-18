@@ -182,7 +182,7 @@ fn=fn.replace(needle,repl,1)
 s=s[:a]+fn+s[b:]
 p.write_text(s)
 
-assert 'final sectionProduct = image[\\'productRowHint\\'] == true' in s
+assert "final sectionProduct = image['productRowHint'] == true" in s
 assert 'gmailLooksLikeFlatLogisticsIcon(bytes, width, height)' in s
 assert "if (sectionProduct) score += 8;" in s
 print('v63: shirt from Package info accepted, delivery proof/truck icon rejected, CDN thumbnail mapping repaired.')
