@@ -37,26 +37,26 @@ one('if (bytes.length < 3500 || bytes.length > 10 * 1024 * 1024)',
 # works; check the thumbnail before declaring a photo unavailable.
 one('''      final response = await http.get(
         Uri.parse(resolved),
-        headers: gmailPhotoHeaders(baseUrl, apiKey, image) ?? const <String, String>{},
+        headers: gmailPhotoHeaders(baseUrl, apiKey, analysisImage) ?? const <String, String>{},
       ).timeout(const Duration(seconds: 18));
       if (response.statusCode < 200 || response.statusCode >= 300) {''',
     '''      http.Response response;
       try {
         response = await http.get(
           Uri.parse(resolved),
-          headers: gmailPhotoHeaders(baseUrl, apiKey, image) ?? const <String, String>{},
+          headers: gmailPhotoHeaders(baseUrl, apiKey, analysisImage) ??
+              const <String, String>{},
         ).timeout(const Duration(seconds: 12));
       } catch (_) {
         response = http.Response('', 503);
       }
-      final thumbnail = (image['thumbnailUrl'] ?? '').toString().trim();
+      // Retry the original URL if the prepared Railway thumbnail is missing.
       if ((response.statusCode < 200 || response.statusCode >= 300 ||
-           response.bodyBytes.isEmpty) && thumbnail.isNotEmpty) {
-        final thumbnailImage = <String, dynamic>{...image, 'url': thumbnail};
+           response.bodyBytes.isEmpty) && analysisRaw != rawUrl) {
         try {
           response = await http.get(
-            Uri.parse(gmailPhotoUrl(baseUrl, thumbnailImage)),
-            headers: gmailPhotoHeaders(baseUrl, apiKey, thumbnailImage) ??
+            Uri.parse(gmailPhotoUrl(baseUrl, image)),
+            headers: gmailPhotoHeaders(baseUrl, apiKey, image) ??
                 const <String, String>{},
           ).timeout(const Duration(seconds: 12));
         } catch (_) {}
