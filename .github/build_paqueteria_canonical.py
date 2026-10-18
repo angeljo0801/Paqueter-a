@@ -77,6 +77,7 @@ PATCHES = [
     '.github/patch_recovery_prepared_gmail_handoff_v62.py',
     '.github/patch_recovery_temu_product_sections_v63.py',
     '.github/patch_recovery_transport_and_app_banner_v64.py',
+    '.github/patch_recovery_graphic_veto_priority_v65.py',
 ]
 
 for patch in PATCHES:
@@ -366,6 +367,9 @@ CHECKS['app/lib/background_sync.dart'].extend([
 ])
 
 CHECKS['app/lib/gmail_purchase_link.dart'].extend([
+    'nonProductGraphics',
+    'if (shippingIconName ||',
+    'if (gmailTemuInstallText(ocr)) {',
     'gmailLooksLikeSolidColorDeliveryGlyph',
     'gmailLooksLikeTemuInstallStrip',
     'gmailTemuInstallText',
