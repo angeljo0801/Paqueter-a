@@ -190,16 +190,29 @@ p.write_text(s)
 # accessible from the package itself.
 p=Path('app/lib/clients.dart')
 s=p.read_text()
-start=s.index("              Align(\n                alignment: Alignment.centerLeft,\n                child: Wrap(\n                  spacing:8,")
-end=s.index("              ),\n",start)+len("              ),\n")
-# End first matching Align closure, avoid eating later client-detail widgets.
-old=s[start:end]
-if "Buscar todos en Gmail" not in old:
-    # The Wrap is nested: match through this exact button text + next Align close
-    end=s.index("              ),\n",s.index("label: const Text('Buscar todos en Gmail')",start))+len("              ),\n")
-    old=s[start:end]
-assert "Nuevo paquete" in old and "Buscar todos en Gmail" in old
-original=r'''              Align(
+new_package_ui=r'''              Align(
+                alignment: Alignment.centerLeft,
+                child: Wrap(
+                  spacing:8,
+                  runSpacing:4,
+                  children:[
+                    TextButton.icon(
+                      onPressed: createPackage,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Nuevo paquete'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: packages.isEmpty
+                          ? null
+                          : _searchAllClientPackagesInGmail,
+                      icon: const Icon(Icons.manage_search),
+                      label: const Text('Buscar todos en Gmail'),
+                    ),
+                  ],
+                ),
+              ),
+'''
+old_package_ui=r'''              Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton.icon(
                   onPressed: createPackage,
@@ -208,6 +221,8 @@ original=r'''              Align(
                 ),
               ),
 '''
-s=s[:start]+original+s[end:]
+assert s.count(new_package_ui)==1, 'v57: client action row differs from v31'
+s=s.replace(new_package_ui,old_package_ui,1)
 p.write_text(s)
+
 print('v57: 2.6.28 list/editor chrome, opt-in positive-only adaptive, deletion never trains false negatives.')
