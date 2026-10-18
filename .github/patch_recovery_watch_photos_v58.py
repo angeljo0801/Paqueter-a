@@ -77,8 +77,8 @@ one('''      final ratio = width > 0 && height > 0 ? width / height : 1.0;''',
 one('if (_gmailPromoText(ocr)) {',
     'if (_gmailPromoText(ocr) && !trustedProductShape) {',
     'OCR promotions not a veto')
-one('if (catalogCard && !orderItemSignals) {',
-    'if (catalogCard && !orderItemSignals && !trustedProductShape) {',
+one('if (catalogCard) {',
+    'if (catalogCard && !trustedProductShape) {',
     'OCR star/cart text not a veto')
 
 # The v56 bonus requires too many additional conditions for a simple watch.
