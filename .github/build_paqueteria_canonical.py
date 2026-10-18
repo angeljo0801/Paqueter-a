@@ -83,6 +83,7 @@ PATCHES = [
     '.github/patch_recovery_quantity_diagnostics_v68.py',
     '.github/patch_recovery_valid_small_image_bytes_v69.py',
     '.github/patch_recovery_standalone_ui_icons_v70.py',
+    '.github/patch_recovery_nonproduct_gallery_v71.py',
 ]
 
 for patch in PATCHES:
@@ -209,6 +210,9 @@ CHECKS = {
         'gmailPrepareProductPhotos',
         'gmailLooksLikeStandaloneUiSymbol',
         'icono de interfaz (no artículo)',
+        'gmailHasTwoCatalogPrices',
+        'gmailLooksLikeDarkTemuDeliveryStatusStrip',
+        'gmailLooksLikeGreenSafetyTile',
         '_gmailPromoText',
         'gmailSmartPhotoImage',
         'gmailCatalogRecommendationCard',
