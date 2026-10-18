@@ -129,7 +129,7 @@ h=Path('app/lib/gmail_purchase_link.dart').read_text()
 a=h.index('Future<Map<String, dynamic>> gmailPrepareProductPhotos({')
 b=h.index('\nWidget gmailSmartPhotoImage(',a)
 fn=h[a:b]
-assert fn.index('gmailLooksLikeWideBrandWordmark(bytes, width, height)') < fn.index('final sourceThumbnail')
+assert fn.index('gmailLooksLikeWideBrandWordmark(bytes, width, height)') < fn.index('if (gmailIsIsolatedStoreWordmark(ocr))')
 assert 'final colorfulOrPhoto = neutral / sample < 0.93;' in h
 assert "if (rejectedWordmarkIds.contains(_gmailCandidateIdentity(image)))" in s
 print('v60: OCR-empty wide monochrome SHEIN/TEMU wordmarks rejected by pixels; originals retained for review.')
