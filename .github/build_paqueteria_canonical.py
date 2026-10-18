@@ -65,6 +65,7 @@ PATCHES = [
     '.github/patch_recovery_photo_commit_order_v50.py',
     '.github/patch_recovery_photo_staging_v51.py',
     '.github/patch_recovery_inbox_independent_v52.py',
+    '.github/patch_recovery_raw_photo_rescue_v53.py',
 ]
 
 for patch in PATCHES:
