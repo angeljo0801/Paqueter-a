@@ -58,10 +58,10 @@ Future<bool> gmailLooksLikeShieldCheckArtwork(
             greenStrong / visible > .58) return false;
 
         double coverage(double x1, double x2, double y1, double y2) {
-          final xStart = (x1 * w).floor().clamp(0, w - 1);
-          final xEnd = (x2 * w).ceil().clamp(xStart + 1, w);
-          final yStart = (y1 * h).floor().clamp(0, h - 1);
-          final yEnd = (y2 * h).ceil().clamp(yStart + 1, h);
+          final xStart = (x1 * w).floor().clamp(0, w - 1).toInt();
+          final xEnd = (x2 * w).ceil().clamp(xStart + 1, w).toInt();
+          final yStart = (y1 * h).floor().clamp(0, h - 1).toInt();
+          final yEnd = (y2 * h).ceil().clamp(yStart + 1, h).toInt();
           var matching = 0, area = 0;
           for (var y = yStart; y < yEnd; y++) {
             for (var x = xStart; x < xEnd; x++) {
@@ -124,10 +124,10 @@ Future<bool> gmailLooksLikeStarCartMarketplaceListing(
         }
         double regionRatio(double x1, double x2, double y1, double y2,
             bool Function(int, int) test) {
-          final xStart = (w * x1).floor().clamp(0, w - 1);
-          final xEnd = (w * x2).ceil().clamp(xStart + 1, w);
-          final yStart = (h * y1).floor().clamp(0, h - 1);
-          final yEnd = (h * y2).ceil().clamp(yStart + 1, h);
+          final xStart = (w * x1).floor().clamp(0, w - 1).toInt();
+          final xEnd = (w * x2).ceil().clamp(xStart + 1, w).toInt();
+          final yStart = (h * y1).floor().clamp(0, h - 1).toInt();
+          final yEnd = (h * y2).ceil().clamp(yStart + 1, h).toInt();
           var match = 0, total = 0;
           for (var y = yStart; y < yEnd; y++) {
             for (var x = xStart; x < xEnd; x++) {
