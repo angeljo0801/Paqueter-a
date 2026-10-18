@@ -361,7 +361,7 @@ CHECKS['app/lib/background_sync.dart'].extend([
 
 CHECKS['app/lib/gmail_purchase_link.dart'].extend([
     'trustedProductShape',
-    'thumbnailImage',
+    'analysisRaw != rawUrl',
     'if (score < 2 && !trustedProductShape)',
 ])
 CHECKS['app/lib/packages.dart'].extend([
