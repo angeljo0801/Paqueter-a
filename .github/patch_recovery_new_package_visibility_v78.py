@@ -48,6 +48,45 @@ helper = r'''  void _clearPackagesSearch() {
 '''
 page=page.replace(anchor,helper+anchor,1)
 
+# Make new packages visible at the top even with a long package list. The
+# dashboard retains its old ordering for every other record.
+field = "  String _bulkStamp='';"
+assert page.count(field) == 1, 'v78: package list fields changed'
+page=page.replace(field,field+"\n  String _latestSavedPackageId='';\n  final ScrollController _newPackageScroll=ScrollController();",1)
+
+dispose = "    search.dispose();\n    super.dispose();"
+assert page.count(dispose) == 1, 'v78: package scroll controller lifecycle moved'
+page=page.replace(dispose,"    search.dispose();\n    _newPackageScroll.dispose();\n    super.dispose();",1)
+
+fstart=page.index("    final f = rows.where((p) =>")
+fend=page.index("    return Scaffold(",fstart)
+filter_block=page[fstart:fend]
+assert filter_block.count(".toList();") == 1, 'v78: dashboard list filtering changed'
+page=page.replace(filter_block,filter_block+r'''    if (_latestSavedPackageId.isNotEmpty) {
+      f.sort((a, b) {
+        final aTop=(a['id'] ?? '').toString()==_latestSavedPackageId;
+        final bTop=(b['id'] ?? '').toString()==_latestSavedPackageId;
+        return aTop == bTop ? 0 : (aTop ? -1 : 1);
+      });
+    }
+''',1)
+
+lv=": ListView.builder(\n                  itemCount: f.length,"
+assert page.count(lv)==1,'v78: dashboard scroll list changed'
+page=page.replace(lv,": ListView.builder(\n                  controller: _newPackageScroll,\n                  itemCount: f.length,",1)
+
+# Saved item exists and is active: after clearing a stale search, pin to top.
+success="    ScaffoldMessenger.of(context).showSnackBar(\n      SnackBar(\n        content: Text('Paquete guardado: ' +"
+assert page.count(success)==1,'v78: package save confirmation changed'
+page=page.replace(success,r'''    setState(() => _latestSavedPackageId = savedId);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _newPackageScroll.hasClients) {
+        _newPackageScroll.jumpTo(0);
+      }
+    });
+'''+success,1)
+
+
 # Route returning from Save includes the saved ID. This is not called after
 # cancellation, so cancelled form edits do not clear the search.
 old="onPressed: () async { await Navigator.push(context, MaterialPageRoute(builder: (_) => const PackageEditPage())); load(forceRefresh:true); },"
