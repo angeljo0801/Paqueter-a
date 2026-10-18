@@ -71,9 +71,11 @@ page=page.replace(filter_block,filter_block+r'''    if (_latestSavedPackageId.is
     }
 ''',1)
 
-lv=": ListView.builder(\n                  itemCount: f.length,"
-assert page.count(lv)==1,'v78: dashboard scroll list changed'
-page=page.replace(lv,": ListView.builder(\n                  controller: _newPackageScroll,\n                  itemCount: f.length,",1)
+# The dashboard may have a PageStorageKey or slightly different spacing.
+# Attach the ScrollController by the unique itemCount rather than formatting.
+lv="                  itemCount: f.length,"
+assert page.count(lv)==1,'v78: dashboard list item count changed'
+page=page.replace(lv,"                  controller: _newPackageScroll,\n"+lv,1)
 
 # Saved item exists and is active: after clearing a stale search, pin to top.
 success="    ScaffoldMessenger.of(context).showSnackBar(\n      SnackBar(\n        content: Text('Paquete guardado: ' +"
