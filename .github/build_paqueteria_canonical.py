@@ -369,7 +369,8 @@ CHECKS['app/lib/gmail_purchase_link.dart'].extend([
     'if (score < 2 && !trustedProductShape)',
 ])
 CHECKS['app/lib/packages.dart'].extend([
-    'wordmarkUrls.contains(url)',
+    'isolatedWordmarkUrls.contains(url)',
+    'keptUrls.removeWhere(rejectedBrandUrls.contains);',
     "'photoClass': 'pending_product_review'",
 ])
 
