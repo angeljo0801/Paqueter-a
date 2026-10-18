@@ -117,8 +117,8 @@ jobs:
           assert 'patch_recovery_global_search_sharedprefs_v66.py' in src, 'Missing global search SharedPreferences plugin crash fix'
           assert 'patch_recovery_compact_quantity_product_v67.py' in src, 'Missing short quantity/photo item row preservation'
           assert 'patch_recovery_quantity_diagnostics_v68.py' in src, 'Missing narrow 1pc protection and rejection-reason diagnostics'
-          assert 'patch_recovery_valid_small_image_bytes_v69.py' in src
-          assert 'patch_recovery_standalone_ui_icons_v70.py' in src, 'Missing standalone UI icon filter', 'Missing actual <3500-byte photo rejection fix'
+          assert 'patch_recovery_valid_small_image_bytes_v69.py' in src, 'Missing actual <3500-byte photo rejection fix'
+          assert 'patch_recovery_standalone_ui_icons_v70.py' in src, 'Missing standalone UI icon filter'
           print('Validated Gmail photo baseline and purchase linking.')
           PY
 
