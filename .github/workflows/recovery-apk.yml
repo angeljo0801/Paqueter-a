@@ -72,7 +72,8 @@ jobs:
           from pathlib import Path
           src = Path('.github/build_paqueteria_canonical.py').read_text()
           version = Path('paqueteria/pubspec.yaml').read_text()
-          assert 'version: 2.6.72+106' in version
+          assert 'version: 2.6.73+107' in version
+          assert 'shared_preferences_android: 2.4.28' in version, 'Android preferences ABI pin missing'
           for missing in [
               'patch_native_local_storage_v38.py',
               'patch_gmail_per_key_slots_v39.py',
@@ -188,6 +189,25 @@ jobs:
         working-directory: app
         run: flutter pub get
 
+      - name: Confirm compatible Android preferences plugin
+        working-directory: app
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          lock = Path('pubspec.lock').read_text()
+          match = re.search(
+              r'(?ms)^  shared_preferences_android:\n(.*?)(?=^  [a-zA-Z_][a-zA-Z_0-9]*:|\\Z)',
+              lock,
+          )
+          if not match or 'version: "2.4.28"' not in match.group(1):
+              raise SystemExit(
+                  'Unsafe Android shared_preferences version; '
+                  '2.5.0 JNI may cause a getAll NoSuchMethodError.'
+              )
+          print('Pinned shared_preferences_android 2.4.28 verified.')
+          PY
+
       - name: Generate launcher icon
         working-directory: app
         run: dart run flutter_launcher_icons
@@ -205,8 +225,8 @@ jobs:
           # them as updates instead of reporting "App not installed / couldn't update".
           # Most recent recovery used versionCode 100265.
           # Use the next value, NOT a 200000 range that could block upgrades.
-          # Future production releases must use a versionCode greater than 100274.
-          BUILD_NUMBER=100274
+          # Future production releases must use a versionCode greater than 100275.
+          BUILD_NUMBER=100275
           echo "PAQUETERIA_BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
           flutter build apk --release --build-number "$BUILD_NUMBER"
 
