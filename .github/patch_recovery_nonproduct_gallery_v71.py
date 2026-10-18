@@ -274,8 +274,13 @@ assert s.count(hard) == 1, 'v71: package fallback hard classes moved'
 s = s.replace(hard, hard_new, 1)
 persist = "            e['photoClass'] == 'app_install_banner' ||"
 persist_new = persist + "\n            e['photoClass'] == 'delivery_status_banner' ||\n            e['photoClass'] == 'catalog_card' ||"
-assert s.count(persist) == 1, 'v71: persist hard classes moved'
-s = s.replace(persist, persist_new, 1)
+# Work only in snapshot persistence: 12 spaces also appear inside the
+# 14-space package-grid line, which must not count as a second occurrence.
+a = s.index('  Future<void> _persistRecoveredGmailSnapshot() async {')
+b = s.index('  Future<void> removeMultipleEmailPhotos() async {', a)
+snapshot = s[a:b]
+assert snapshot.count(persist) == 1, 'v71: persisted hard classes moved'
+s = s[:a] + snapshot.replace(persist, persist_new, 1) + s[b:]
 
 identities = """          .where((e) => e['photoClass'] == 'store_wordmark')"""
 assert s.count(identities) == 1, 'v71: digest fallback rejection moved'
