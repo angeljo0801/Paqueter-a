@@ -75,6 +75,7 @@ PATCHES = [
     '.github/patch_recovery_logo_pixels_v60.py',
     '.github/patch_recovery_temu_latest_gallery_v61.py',
     '.github/patch_recovery_prepared_gmail_handoff_v62.py',
+    '.github/patch_recovery_temu_product_sections_v63.py',
 ]
 
 for patch in PATCHES:
@@ -364,6 +365,10 @@ CHECKS['app/lib/background_sync.dart'].extend([
 ])
 
 CHECKS['app/lib/gmail_purchase_link.dart'].extend([
+    'gmailLooksLikeFlatLogisticsIcon',
+    "if (sectionProduct) score += 8;",
+    "'photoClass': 'logistics_icon'",
+    "'photoClass': 'delivery_proof'",
     'gmailLooksLikeWideBrandWordmark',
     '(bright + dark) / sample >= 0.76',
     'gmailIsIsolatedStoreWordmark',
@@ -374,6 +379,7 @@ CHECKS['app/lib/gmail_purchase_link.dart'].extend([
     'if (score < 2 && !trustedProductShape)',
 ])
 CHECKS['app/lib/packages.dart'].extend([
+    'for (final key in <String>[cached, original])',
     'final preparedByUrl = <String, Map<String, dynamic>>{};',
     "return 'url:$raw';",
     'gmailLatestTemuFreshResult',
