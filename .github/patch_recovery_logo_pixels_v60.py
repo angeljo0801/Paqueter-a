@@ -60,7 +60,7 @@ Future<bool> gmailLooksLikeWideBrandWordmark(
       // black belt on white or a pale product is not rejected solely by ratio.
       final bicolor = bright / sample >= 0.30 &&
           dark / sample >= 0.06 &&
-          (bright + dark) / sample >= 0.81;
+          (bright + dark) / sample >= 0.76;
       final transparentBrand = transparent / total >= 0.50 &&
           bright / sample >= 0.06 &&
           dark / sample >= 0.06;
