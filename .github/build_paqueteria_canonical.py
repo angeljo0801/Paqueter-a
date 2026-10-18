@@ -85,6 +85,7 @@ PATCHES = [
     '.github/patch_recovery_standalone_ui_icons_v70.py',
     '.github/patch_recovery_nonproduct_gallery_v71.py',
     '.github/patch_recovery_pixel_ui_cards_v72.py',
+    '.github/patch_recovery_gmail_offline_images_v73.py',
 ]
 
 for patch in PATCHES:
@@ -216,6 +217,8 @@ CHECKS = {
         'gmailLooksLikeGreenSafetyTile',
         'gmailLooksLikeShieldCheckArtwork',
         'gmailLooksLikeStarCartMarketplaceListing',
+        'gmailEnsurePhotoAvailableOffline',
+        'gmailWarmAcceptedPhotosForOffline',
         '_gmailPromoText',
         'gmailSmartPhotoImage',
         'gmailCatalogRecommendationCard',
