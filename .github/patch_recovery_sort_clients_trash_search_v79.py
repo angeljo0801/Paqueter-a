@@ -145,7 +145,7 @@ assert "_sortVisiblePackages(f);" in page
 assert "if (_latestSavedPackageId.isNotEmpty)" in page
 s=s[:a]+page+s[b:]
 
-edit_a=s.index('class _PackageEditPageState extends State<PackageEditPage> {')
+edit_a=s.index('class _PackageEditPageState')
 edit=s[edit_a:]
 anchor="  void autoBillWeight() {"
 assert edit.count(anchor)==1
@@ -179,7 +179,10 @@ picker=r'''  String _clientSearchKey(String text) => text.toLowerCase().trim()
             padding:EdgeInsets.only(
               bottom:MediaQuery.of(sheetContext).viewInsets.bottom),
             child:SizedBox(
-              height:MediaQuery.of(sheetContext).size.height*.72,
+              height:(MediaQuery.of(sheetContext).size.height*.72 -
+                  MediaQuery.of(sheetContext).viewInsets.bottom)
+                  .clamp(240.0, MediaQuery.of(sheetContext).size.height*.72)
+                  .toDouble(),
               child:Column(children:[
                 Padding(
                   padding:const EdgeInsets.fromLTRB(16,4,16,10),
