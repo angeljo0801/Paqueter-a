@@ -122,7 +122,7 @@ original="""                  if (gmailRejectedImages.isNotEmpty)
                         label: Text('Ver imágenes descartadas (\${gmailRejectedImages.length})'),
                       ),
                     ),"""
-assert s.count(original)==1, 'v56: original older review link missing'
+assert s.count(original.replace("\\$","$"))==1, 'v56: original older review link missing'
 new="""                  if (gmailRejectedImages.isNotEmpty ||
                       gmailCandidateInbox.isNotEmpty)
                     Align(
