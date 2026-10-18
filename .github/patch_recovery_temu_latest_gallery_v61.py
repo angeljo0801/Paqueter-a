@@ -23,7 +23,7 @@ part=part.replace(needle,r'''    // Mark ONLY a successful, explicitly initiated
         !_recoveringFinishedGmailSearch &&
         data['found'] == true &&
         data['photoSearchScope'] == 'single_priority_email' &&
-        sourceRule.startsWith('temu_');
+        sourceRule == 'temu_latest_first';
 '''+needle,1)
 old="""    if (!_recoveringFinishedGmailSearch &&
         data['found'] == true && hasServerImages) {"""
