@@ -279,7 +279,8 @@ CHECKS = {
         'Copiar tracking',
         'PackageEditPage(existing: package)',
         '_searchAllClientPackagesInGmail',
-        'Buscar todos en Gmail',
+        # v2.6.28 client layout: extra v31 bulk Gmail button removed.
+
         '_withPhotoCompletionStatus',
         '_clientArticlePhotoThumbProviders',
         'ResizeImage.resizeIfNeeded(420, 420, provider)',
