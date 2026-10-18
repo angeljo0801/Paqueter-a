@@ -139,7 +139,8 @@ CHECKS = {
         'selectedPackageIds',
         '_searchSelectedInGmail',
         '_deleteSelectedPackages',
-        'Seleccionar todos los visibles',
+        # Classic v2.6.28 package list hides bulk-selection toolbar.
+
         "'Completed'",
     ],
     'app/lib/purchases.dart': [
