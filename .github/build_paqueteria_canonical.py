@@ -88,6 +88,7 @@ PATCHES = [
     '.github/patch_recovery_gmail_offline_images_v73.py',
     '.github/patch_recovery_package_authority_trash_v74.py',
     '.github/patch_recovery_whatsbot_local_priority_v75.py',
+    '.github/patch_recovery_trash_package_details_v76.py',
 ]
 
 for patch in PATCHES:
@@ -369,6 +370,13 @@ CHECKS['app/lib/extras.dart'].extend([
     "Vaciar definitivamente",
     "await PackageDeletionLedger.remember(row)",
     "await PackageDeletionLedger.allowExplicit(rows[i])",
+])
+CHECKS['app/lib/extras.dart'].extend([
+    "_packageTrashTile",
+    "_showTrashedPackageDetails",
+    "gmailRecordNotFound(row)",
+    "packageCompletedBadge(context)",
+    "Solo lectura. Restaura el paquete",
 ])
 CHECKS['app/lib/whatsbot_sync.dart'].extend([
     "PackageDeletionLedger.blocks(remoteIdentity, deletedIds)",
