@@ -69,6 +69,7 @@ PATCHES = [
     '.github/patch_recovery_product_thumbnail_ocr_v54.py',
     '.github/patch_recovery_fresh_gmail_v55.py',
     '.github/patch_recovery_classification_legacy_ui_v56.py',
+    '.github/patch_recovery_legacy28_optional_learning_v57.py',
 ]
 
 for patch in PATCHES:
