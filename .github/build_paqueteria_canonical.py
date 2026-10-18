@@ -72,6 +72,7 @@ PATCHES = [
     '.github/patch_recovery_legacy28_optional_learning_v57.py',
     '.github/patch_recovery_watch_photos_v58.py',
     '.github/patch_recovery_store_wordmark_v59.py',
+    '.github/patch_recovery_logo_pixels_v60.py',
 ]
 
 for patch in PATCHES:
@@ -361,6 +362,8 @@ CHECKS['app/lib/background_sync.dart'].extend([
 ])
 
 CHECKS['app/lib/gmail_purchase_link.dart'].extend([
+    'gmailLooksLikeWideBrandWordmark',
+    '(bright + dark) / sample >= 0.76',
     'gmailIsIsolatedStoreWordmark',
     "'photoClass': 'store_wordmark'",
     "return compressed == 'shein' || compressed == 'temu';",
@@ -369,6 +372,7 @@ CHECKS['app/lib/gmail_purchase_link.dart'].extend([
     'if (score < 2 && !trustedProductShape)',
 ])
 CHECKS['app/lib/packages.dart'].extend([
+    'rejectedWordmarkIds.contains(_gmailCandidateIdentity(image))',
     'isolatedWordmarkUrls.contains(url)',
     'keptUrls.removeWhere(rejectedBrandUrls.contains);',
     "'photoClass': 'pending_product_review'",
