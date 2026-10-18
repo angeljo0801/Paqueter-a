@@ -92,6 +92,7 @@ PATCHES = [
     '.github/patch_recovery_packages_refresh_v77.py',
     '.github/patch_recovery_new_package_visibility_v78.py',
     '.github/patch_recovery_sort_clients_trash_search_v79.py',
+    '.github/patch_recovery_receivables_audit_v80.py',
 ]
 
 for patch in PATCHES:
@@ -348,6 +349,19 @@ CHECKS['app/lib/package_purchase_links.dart'] = [
     'class PackagePurchaseLinks', 'choosePurchases(', 'choosePackagesForPurchase(',
     "'purchaseIds'", "'purchaseId'",
 ]
+CHECKS['app/lib/main.dart'].extend([
+    'purchaseCollectibleForClient',
+    'purchaseHasCollectibleCharge',
+    'totalClientReceivables',
+    '_showReceivablesDetails',
+    'Desglose de dinero por cobrar',
+])
+CHECKS['app/lib/clients.dart'].extend([
+    'clientDue(widget.clientId,purchases,payments)',
+])
+CHECKS['app/lib/extras.dart'].extend([
+    'purchaseCollectibleForClient(p, id)',
+])
 CHECKS['app/lib/packages.dart'].extend([
     "tooltip: 'Ordenar paquetes'",
     "_sortVisiblePackages(f)",
