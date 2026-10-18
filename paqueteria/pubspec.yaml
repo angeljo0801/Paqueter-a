@@ -1,7 +1,7 @@
 name: paqueteria
 publish_to: 'none'
 description: Herramientas de negocio para paqueteria a Cuba.
-version: 2.6.72+106
+version: 2.6.73+107
 
 environment:
   sdk: '>=3.6.0 <4.0.0'
@@ -10,6 +10,10 @@ dependencies:
   flutter:
     sdk: flutter
   shared_preferences: ^2.5.3
+  # 2.5.0 switched to Pigeon JNI; some devices hit NoSuchMethodError
+  # on SharedPreferencesApiRegistrar.getAll after an in-place app update.
+  # Preserve the older Kotlin/Pigeon ABI and existing preference data.
+  shared_preferences_android: 2.4.28
   flutter_secure_storage: ^9.2.4
   flutter_contacts: ^2.5.0
   http: ^1.2.2
