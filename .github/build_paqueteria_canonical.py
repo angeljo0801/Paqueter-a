@@ -86,6 +86,8 @@ PATCHES = [
     '.github/patch_recovery_nonproduct_gallery_v71.py',
     '.github/patch_recovery_pixel_ui_cards_v72.py',
     '.github/patch_recovery_gmail_offline_images_v73.py',
+    '.github/patch_recovery_package_authority_trash_v74.py',
+    '.github/patch_recovery_whatsbot_local_priority_v75.py',
 ]
 
 for patch in PATCHES:
@@ -351,6 +353,28 @@ CHECKS['app/lib/packages.dart'].extend([
 CHECKS['app/lib/purchases.dart'].extend([
     'PackagePurchaseLinks.choosePackagesForPurchase(',
     'Paquetes vinculados (',
+])
+
+CHECKS['app/lib/main.dart'].extend([
+    "class PackageDeletionLedger",
+    "await PackageDeletionLedger.remember(rows[i])",
+])
+CHECKS['app/lib/packages.dart'].extend([
+    "'paqueteriaLocalEditedAt'",
+    "await Store.list('packages', forceRefresh: true)",
+    "No se pudo verificar el guardado del paquete",
+])
+CHECKS['app/lib/extras.dart'].extend([
+    "Vaciar papelera",
+    "Vaciar definitivamente",
+    "await PackageDeletionLedger.remember(row)",
+    "await PackageDeletionLedger.allowExplicit(rows[i])",
+])
+CHECKS['app/lib/whatsbot_sync.dart'].extend([
+    "PackageDeletionLedger.blocks(remoteIdentity, deletedIds)",
+    "changedRemotePackageIds",
+    "pushedMetadata",
+    "static Future<int> _syncProtected(",
 ])
 
 CHECKS['app/lib/main.dart'].extend([
