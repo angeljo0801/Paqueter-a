@@ -89,6 +89,7 @@ PATCHES = [
     '.github/patch_recovery_package_authority_trash_v74.py',
     '.github/patch_recovery_whatsbot_local_priority_v75.py',
     '.github/patch_recovery_trash_package_details_v76.py',
+    '.github/patch_recovery_packages_refresh_v77.py',
 ]
 
 for patch in PATCHES:
@@ -364,6 +365,11 @@ CHECKS['app/lib/packages.dart'].extend([
     "'paqueteriaLocalEditedAt'",
     "await Store.list('packages', forceRefresh: true)",
     "No se pudo verificar el guardado del paquete",
+])
+CHECKS['app/lib/packages.dart'].extend([
+    "tooltip: 'Actualizar lista de paquetes'",
+    "await load(forceRefresh: true);",
+    "_refreshingPackages",
 ])
 CHECKS['app/lib/extras.dart'].extend([
     "Vaciar papelera",
