@@ -73,6 +73,7 @@ PATCHES = [
     '.github/patch_recovery_watch_photos_v58.py',
     '.github/patch_recovery_store_wordmark_v59.py',
     '.github/patch_recovery_logo_pixels_v60.py',
+    '.github/patch_recovery_temu_latest_gallery_v61.py',
 ]
 
 for patch in PATCHES:
@@ -372,6 +373,9 @@ CHECKS['app/lib/gmail_purchase_link.dart'].extend([
     'if (score < 2 && !trustedProductShape)',
 ])
 CHECKS['app/lib/packages.dart'].extend([
+    'gmailLatestTemuFreshResult',
+    'hasServerImages || gmailLatestTemuFreshResult',
+    'accepted.isEmpty && !gmailLatestTemuFreshResult',
     'rejectedWordmarkIds.contains(_gmailCandidateIdentity(image))',
     'isolatedWordmarkUrls.contains(url)',
     'keptUrls.removeWhere(rejectedBrandUrls.contains);',
