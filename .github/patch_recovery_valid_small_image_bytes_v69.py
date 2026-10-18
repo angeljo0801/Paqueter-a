@@ -14,7 +14,7 @@ a = s.index('Future<Map<String, dynamic>> gmailPrepareProductPhotos({')
 b = s.index('\nWidget gmailSmartPhotoImage(', a)
 fn = s[a:b]
 
-old = """      if (bytes.length < 3500 || bytes.length > 10 * 1024 * 1024) {
+old = """      if (bytes.length < (matchedStoreSource ? 500 : 3500) || bytes.length > 10 * 1024 * 1024) {
         rejected.add({...image, 'rejectReason': 'imagen demasiado pequeña/grande'});
         continue;
       }"""
@@ -51,6 +51,7 @@ assert fn.count(point) == 1, 'v69 current v68 size/row prefilter missing'
 fn = fn.replace(point, guard + point, 1)
 
 assert "bytes.length < 3500" not in fn
+assert "matchedStoreSource ? 500 : 3500" not in fn
 assert fn.index("if (width <= 0 || height <= 0)") < fn.index("final photographicRowCandidate =")
 assert fn.index("if (shippingIconName ||") < fn.index("if (shortItemPhotoRow) score += 6;")
 assert fn.index("if (installBannerByPixels)") < fn.index("if (shortItemPhotoRow) score += 6;")
