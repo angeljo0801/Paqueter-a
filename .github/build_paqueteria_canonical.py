@@ -82,6 +82,7 @@ PATCHES = [
     '.github/patch_recovery_compact_quantity_product_v67.py',
     '.github/patch_recovery_quantity_diagnostics_v68.py',
     '.github/patch_recovery_valid_small_image_bytes_v69.py',
+    '.github/patch_recovery_standalone_ui_icons_v70.py',
 ]
 
 for patch in PATCHES:
@@ -206,6 +207,8 @@ CHECKS = {
         "working[currentIndex]['receivedInCuba'] == true",
         'Ya vinculado / reconstruido con Gmail',
         'gmailPrepareProductPhotos',
+        'gmailLooksLikeStandaloneUiSymbol',
+        'icono de interfaz (no artículo)',
         '_gmailPromoText',
         'gmailSmartPhotoImage',
         'gmailCatalogRecommendationCard',
