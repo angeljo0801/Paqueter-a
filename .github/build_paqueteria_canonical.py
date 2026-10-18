@@ -284,7 +284,6 @@ CHECKS = {
         "current['status'] = 'Completed'",
         'GmailPhotoLearningService.rememberImage',
         'product: true',
-        'product: false',
     ],
     'app/lib/backup_service.dart': [
         'restoreFile(String path)',
