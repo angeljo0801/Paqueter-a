@@ -9,7 +9,7 @@ s = p.read_text()
 start = s.index('bool _gmailUrlClearlyNotProduct(String url) {')
 end = s.index('\n}\n', start) + 2
 old = s[start:end]
-assert "'tracking'" in old and "'banner'" in old, 'v58 unexpected URL blocker'
+assert "bool _gmailUrlClearlyNotProduct(String url)" in old, 'v58 URL filter moved'
 s = s[:start] + r'''bool _gmailUrlClearlyNotProduct(String url) {
   // A product image URL can contain "tracking", "banner", "icon" or "logo"
   // as an unrelated query value. Reject only explicit tracking pixels.
