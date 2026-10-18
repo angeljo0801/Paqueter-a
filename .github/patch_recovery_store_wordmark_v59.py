@@ -58,20 +58,57 @@ s=p.read_text()
 a=s.index('  Future<void> _smartFilterAndCacheGmailPhotos() async {')
 b=s.index('  Future<void> _showRejectedGmailPhotos() async {',a)
 fn=s[a:b]
+# v46 must not resurrect an old accepted logo when the new OCR correctly
+# identifies it as a wordmark (its preserve-previous-photo branch ran early).
+prior = "    if (accepted.isEmpty) {\n"
+assert fn.count(prior)>=2, 'v59 legacy preservation structure unavailable'
+fn=fn.replace(prior, '''    final isolatedWordmarkUrls = rejected
+        .where((e) => e['photoClass'] == 'store_wordmark' ||
+            e['rejectReason'] == 'logotipo de tienda (no artículo)')
+        .map((e) => (e['url'] ?? '').toString().trim())
+        .where((u) => u.isNotEmpty).toSet();
+    if (accepted.isEmpty) {
+''',1)
+old = '''        if (url.isEmpty || !previousUrls.contains(url) ||
+            hiddenEmailPhotoUrls.contains(url) || !present.add(url)) continue;'''
+new = '''        if (url.isEmpty || !previousUrls.contains(url) ||
+            isolatedWordmarkUrls.contains(url) ||
+            hiddenEmailPhotoUrls.contains(url) || !present.add(url)) continue;'''
+assert fn.count(old)==1, 'v59 old saved photo resurrection guard missing'
+fn=fn.replace(old,new,1)
 anchor = '''      for (final image in gmailCandidateInbox) {'''
 assert fn.count(anchor)==1, 'v59 verified source fallback loop missing'
-fn=fn.replace(anchor, '''      final wordmarkUrls = rejected
-          .where((e) => e['photoClass'] == 'store_wordmark' ||
-              e['rejectReason'] == 'logotipo de tienda (no artículo)')
-          .map((e) => (e['url'] ?? '').toString().trim())
-          .where((u) => u.isNotEmpty).toSet();
-      for (final image in gmailCandidateInbox) {''',1)
+fn=fn.replace(anchor, '''      for (final image in gmailCandidateInbox) {''',1)
 needle = '''        if (url.isEmpty || hiddenEmailPhotoUrls.contains(url) ||
             image['deliveryProofHint'] == true ||'''
 assert fn.count(needle)==1, 'v59 fallback rejection check missing'
 fn=fn.replace(needle, '''        if (url.isEmpty || hiddenEmailPhotoUrls.contains(url) ||
-            wordmarkUrls.contains(url) ||
+            isolatedWordmarkUrls.contains(url) ||
             image['deliveryProofHint'] == true ||''',1)
+s=s[:a]+fn+s[b:]
+p.write_text(s)
+
+# Once the refreshed OCR identifies a logo, do not quietly resurrect an
+# earlier saved copy when the new search has no other accepted image.
+a=s.index('  Future<void> _persistRecoveredGmailSnapshot() async {')
+b=s.index('  Future<void> removeMultipleEmailPhotos() async {', a)
+fn=s[a:b]
+needle="    final keptUrls = emailPhotoUrls"
+assert fn.count(needle)==1, 'v59 auto-save guard missing'
+fn=fn.replace(needle, """    final rejectedBrandUrls = gmailRejectedImages
+        .where((e) => e['photoClass'] == 'store_wordmark' ||
+            e['rejectReason'] == 'logotipo de tienda (no artículo)')
+        .map((e) => (e['url'] ?? '').toString().trim())
+        .where((url) => url.isNotEmpty).toSet();
+""" + needle,1)
+needle="    final mergedOffline = <String, String>{"
+assert fn.count(needle)==1, 'v59 persistence merge missing'
+fn=fn.replace(needle, """    // Only remove logo images *recognized by this fresh search*. Do not
+    // erase legitimate purchases or unrelated user photos.
+    keptUrls.removeWhere(rejectedBrandUrls.contains);
+    keptAttachments.removeWhere((entry) =>
+        rejectedBrandUrls.contains((entry['url'] ?? '').toString().trim()));
+""" + needle,1)
 s=s[:a]+fn+s[b:]
 p.write_text(s)
 
@@ -83,5 +120,6 @@ fn=h[a:b]
 assert fn.index('if (gmailIsIsolatedStoreWordmark(ocr))') < fn.index('if (_gmailPromoText(ocr)') 
 assert fn.index('if (gmailIsIsolatedStoreWordmark(ocr))') < fn.index('if (score < 2')
 assert "return compressed == 'shein' || compressed == 'temu';" in h
-assert 'wordmarkUrls.contains(url)' in s
+assert 'isolatedWordmarkUrls.contains(url)' in s
+assert 'keptUrls.removeWhere(rejectedBrandUrls.contains);' in s
 print('v59: standalone SHEIN/Temu logos rejected, real product photos and fallback retained.')
