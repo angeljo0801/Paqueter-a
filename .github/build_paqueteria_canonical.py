@@ -74,6 +74,7 @@ PATCHES = [
     '.github/patch_recovery_store_wordmark_v59.py',
     '.github/patch_recovery_logo_pixels_v60.py',
     '.github/patch_recovery_temu_latest_gallery_v61.py',
+    '.github/patch_recovery_prepared_gmail_handoff_v62.py',
 ]
 
 for patch in PATCHES:
@@ -373,6 +374,8 @@ CHECKS['app/lib/gmail_purchase_link.dart'].extend([
     'if (score < 2 && !trustedProductShape)',
 ])
 CHECKS['app/lib/packages.dart'].extend([
+    'final preparedByUrl = <String, Map<String, dynamic>>{};',
+    "return 'url:$raw';",
     'gmailLatestTemuFreshResult',
     'hasServerImages || gmailLatestTemuFreshResult',
     'accepted.isEmpty && !gmailLatestTemuFreshResult',
