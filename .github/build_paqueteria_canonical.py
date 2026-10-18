@@ -78,6 +78,7 @@ PATCHES = [
     '.github/patch_recovery_temu_product_sections_v63.py',
     '.github/patch_recovery_transport_and_app_banner_v64.py',
     '.github/patch_recovery_graphic_veto_priority_v65.py',
+    '.github/patch_recovery_global_search_sharedprefs_v66.py',
 ]
 
 for patch in PATCHES:
@@ -336,6 +337,15 @@ CHECKS['app/lib/purchases.dart'].extend([
     'Paquetes vinculados (',
 ])
 
+CHECKS['app/lib/main.dart'].extend([
+    "Store._readRaw('$_searchStatePrefix$key')",
+    "Store._writeRaw('$_searchStatePrefix$key', value)",
+]);
+CHECKS['app/lib/search.dart'] = [
+    'class BusinessSearchPage',
+    'loadError.isNotEmpty',
+    'Reintentar búsqueda',
+];
 CHECKS['app/lib/main.dart'].extend([
     "MethodChannel('com.angelapps.paqueteria/local_store')",
     "load();\n  }\n\n  Future<void> load({bool syncCourier = false})",
