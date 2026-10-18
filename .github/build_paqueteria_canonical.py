@@ -79,6 +79,7 @@ PATCHES = [
     '.github/patch_recovery_transport_and_app_banner_v64.py',
     '.github/patch_recovery_graphic_veto_priority_v65.py',
     '.github/patch_recovery_global_search_sharedprefs_v66.py',
+    '.github/patch_recovery_compact_quantity_product_v67.py',
 ]
 
 for patch in PATCHES:
@@ -377,6 +378,9 @@ CHECKS['app/lib/background_sync.dart'].extend([
 ])
 
 CHECKS['app/lib/gmail_purchase_link.dart'].extend([
+    'gmailLooksLikePhotoAndBriefLabelRow',
+    'gmailHasShortItemQuantityOrVariant',
+    'if (shortItemPhotoRow) score += 6;',
     'nonProductGraphics',
     'if (shippingIconName ||',
     'if (gmailTemuInstallText(ocr)) {',
