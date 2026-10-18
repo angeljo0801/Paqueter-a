@@ -136,9 +136,12 @@ fn = fn.replace(old, new, 1)
 
 # The learning engine is optional; its old negative samples must not
 # suppress a row positively identified with the new photographic evidence.
-old = '''      if (learnedDecision.reject && !sourceThumbnail &&'''
-new = '''      if (learnedDecision.reject && !sourceThumbnail &&
-          !compactPhotoRow &&'''
+old = '''      if (learnedDecision.reject &&
+          learnedDecision.reason != 'descartada por aprendizaje local' &&
+          !sourceThumbnail &&'''
+new = '''      if (learnedDecision.reject &&
+          learnedDecision.reason != 'descartada por aprendizaje local' &&
+          !sourceThumbnail && !compactPhotoRow &&'''
 assert fn.count(old) == 1, 'v67 optional learning veto changed'
 fn = fn.replace(old, new, 1)
 
