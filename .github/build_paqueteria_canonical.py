@@ -67,6 +67,7 @@ PATCHES = [
     '.github/patch_gmail_per_key_slots_v39.py',
     '.github/patch_gmail_stale_metadata_v40.py',
     '.github/patch_gmail_photo_recovery_v41.py',
+    '.github/patch_gmail_standalone_ui_icons_v42.py',
 ]
 
 for patch in PATCHES:
@@ -216,6 +217,8 @@ CHECKS = {
         'gmail_photo_learning_v1',
         'corrección visual aprendida',
         'descartada por aprendizaje local',
+        'gmailLooksLikeStandaloneUiIcon',
+        'icono de interfaz sin artículo',
     ],
     'app/lib/background_sync.dart': [
         "const String gmailBackgroundTask = 'gmailBackgroundReconstruct';",
