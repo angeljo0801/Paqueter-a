@@ -70,6 +70,7 @@ PATCHES = [
     '.github/patch_recovery_fresh_gmail_v55.py',
     '.github/patch_recovery_classification_legacy_ui_v56.py',
     '.github/patch_recovery_legacy28_optional_learning_v57.py',
+    '.github/patch_recovery_watch_photos_v58.py',
 ]
 
 for patch in PATCHES:
@@ -356,6 +357,15 @@ CHECKS['app/lib/background_sync.dart'].extend([
 CHECKS['app/lib/background_sync.dart'].extend([
     '_processPackagePhotosInBackground(',
     'gmailBackgroundPhotoUpgrade',
+])
+
+CHECKS['app/lib/gmail_purchase_link.dart'].extend([
+    'trustedProductShape',
+    'thumbnailImage',
+    'if (score < 2 && !trustedProductShape)',
+])
+CHECKS['app/lib/packages.dart'].extend([
+    "'photoClass': 'pending_product_review'",
 ])
 
 missing = []
