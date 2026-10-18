@@ -72,7 +72,7 @@ jobs:
           from pathlib import Path
           src = Path('.github/build_paqueteria_canonical.py').read_text()
           version = Path('paqueteria/pubspec.yaml').read_text()
-          assert 'version: 2.6.63+97' in version
+          assert 'version: 2.6.64+98' in version
           for missing in [
               'patch_native_local_storage_v38.py',
               'patch_gmail_per_key_slots_v39.py',
@@ -105,6 +105,7 @@ jobs:
           assert 'patch_recovery_fresh_gmail_v55.py' in src, 'Missing explicit fresh Gmail search repair'
           assert 'patch_recovery_classification_legacy_ui_v56.py' in src, 'Missing legacy Gmail UI and false product reject fix'
           assert 'patch_recovery_legacy28_optional_learning_v57.py' in src, 'Missing original v2.6.28 interface and learning control'
+          assert 'patch_recovery_watch_photos_v58.py' in src, 'Missing watch-safe Gmail photos repair'
           print('Validated Gmail photo baseline and purchase linking.')
           PY
 
@@ -194,10 +195,10 @@ jobs:
           # Old experimental workflows used 1000/3000/4000-based versionCodes.
           # Canonical releases use a much higher range so Android always accepts
           # them as updates instead of reporting "App not installed / couldn't update".
-          # Most recent canonical release used versionCode 100250.
+          # Most recent recovery used versionCode 100265.
           # Use the next value, NOT a 200000 range that could block upgrades.
-          # Future production releases must use a versionCode greater than 100265.
-          BUILD_NUMBER=100265
+          # Future production releases must use a versionCode greater than 100266.
+          BUILD_NUMBER=100266
           echo "PAQUETERIA_BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
           flutter build apk --release --build-number "$BUILD_NUMBER"
 
