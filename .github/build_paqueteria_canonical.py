@@ -93,6 +93,7 @@ PATCHES = [
     '.github/patch_recovery_new_package_visibility_v78.py',
     '.github/patch_recovery_sort_clients_trash_search_v79.py',
     '.github/patch_recovery_receivables_audit_v80.py',
+    '.github/patch_recovery_label_name_scanner_v81.py',
 ]
 
 for patch in PATCHES:
@@ -349,6 +350,19 @@ CHECKS['app/lib/package_purchase_links.dart'] = [
     'class PackagePurchaseLinks', 'choosePurchases(', 'choosePackagesForPurchase(',
     "'purchaseIds'", "'purchaseId'",
 ]
+CHECKS['app/lib/packages.dart'].extend([
+    'scanPrintedNameOnPackage',
+    'likelyPackageRecipientName',
+    'normalizePackageLabelScan',
+    'Escanear nombre en la etiqueta',
+    'Escanear nombre del paquete',
+    'labelRecipientName',
+    'initialLabelName',
+])
+CHECKS['app/lib/main.dart'].extend([
+    'normalizePackageLabelScan(raw)',
+    'initialLabelName:scan.printedName',
+])
 CHECKS['app/lib/main.dart'].extend([
     'purchaseCollectibleForClient',
     'purchaseHasCollectibleCharge',
