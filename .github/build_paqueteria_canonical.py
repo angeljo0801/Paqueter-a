@@ -94,6 +94,7 @@ PATCHES = [
     '.github/patch_recovery_sort_clients_trash_search_v79.py',
     '.github/patch_recovery_receivables_audit_v80.py',
     '.github/patch_recovery_label_name_scanner_v81.py',
+    '.github/patch_recovery_analyze_all_gmail_candidates_v82.py',
 ]
 
 for patch in PATCHES:
@@ -351,6 +352,7 @@ CHECKS['app/lib/package_purchase_links.dart'] = [
     "'purchaseIds'", "'purchaseId'",
 ]
 CHECKS['app/lib/packages.dart'].extend([
+    '...gmailCandidateInbox,',
     'scanPrintedNameOnPackage',
     'likelyPackageRecipientName',
     'normalizePackageLabelScan',
@@ -479,6 +481,8 @@ CHECKS['app/lib/background_sync.dart'].extend([
 ])
 
 CHECKS['app/lib/gmail_purchase_link.dart'].extend([
+    'for (final original in images) {',
+    "'candidates': images.length,",
     "if (bytes.isEmpty) {",
     "if (width <= 0 || height <= 0) {",
     "archivo de imagen demasiado grande",
