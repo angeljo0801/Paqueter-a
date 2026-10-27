@@ -98,6 +98,33 @@ assert fn.count('_restoreGmailCandidateInboxReview();') == 1, \
 assert fn.index('final allImages = uniqueImages.values.toList();') < \
        fn.index('gmailPrepareProductPhotos(')
 s = s[:a] + fn + s[b:]
+# The same Gmail image may have BOTH an authenticated Railway cache URL
+# and the store's original CDN URL. If the cache was accepted, never show its
+# original URL alias as an unexamined "Candidata" in the rejected gallery.
+a = s.index('  void _restoreGmailCandidateInboxReview() {')
+b = s.index('  Future<void> _smartFilterAndCacheGmailPhotos() async {', a)
+review = s[a:b]
+known = r'''    final seen = <String>{
+      ...gmailRejectedImages.map(_gmailCandidateIdentity),
+    };'''
+alias = r'''    final acceptedAliases = <String>{...accepted};
+    for (final image in gmailCandidateInbox) {
+      final cached = (image['url'] ?? '').toString().trim();
+      final original = (image['originalUrl'] ?? '').toString().trim();
+      if (accepted.contains(cached) && original.isNotEmpty) {
+        acceptedAliases.add(original);
+      }
+    }
+'''
+assert review.count(known) == 1, 'v82 original/cache alias review marker missing'
+review = review.replace(known, alias + known, 1)
+assert review.count('return accepted.contains(url) ||') == 1
+review = review.replace('return accepted.contains(url) ||',
+                        'return acceptedAliases.contains(url) ||', 1)
+assert review.count('if (url.isEmpty || accepted.contains(url) ||') == 1
+review = review.replace('if (url.isEmpty || accepted.contains(url) ||',
+                        'if (url.isEmpty || acceptedAliases.contains(url) ||', 1)
+s = s[:a] + review + s[b:]
 p.write_text(s)
 
 assert "for (final original in images) {" in \
