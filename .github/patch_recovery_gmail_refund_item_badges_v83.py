@@ -61,12 +61,12 @@ s=s.replace(persist,persist+'''
 title="                       title: Text("
 # Don't depend on indentation; the literal only exists in the original
 # Gmail package checklist, not the client/purchase page.
-title="                      title: Text('\${gmailItems[i]['name'] ?? 'Artículo'}'),"
+title="                      title: Text('${gmailItems[i]['name'] ?? 'Artículo'}'),"
 assert s.count(title)==1,'v83 package item title changed'
 s=s.replace(title,'''                      title: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('\${gmailItems[i]['name'] ?? 'Artículo'}'),
+                          Text('${gmailItems[i]['name'] ?? 'Artículo'}'),
                           if (gmailItemMentionedInRefund(
                               gmailItems[i]['name'], gmailRefundedItemNames))
                             const Text(
@@ -92,14 +92,14 @@ s=s.replace(check,'''        if (gmailRefundNotices.isNotEmpty) ...[
                       style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 4),
                   Text(gmailRefundedItemNames.isNotEmpty
-                      ? 'Artículos identificados: \${gmailRefundedItemNames.join(', ')}'
+                      ? 'Artículos identificados: ${gmailRefundedItemNames.join(', ')}'
                       : 'El correo habla de un reembolso, pero no identifica '
                         'con seguridad qué artículo. No se marcará ninguno.'),
                   for (final row in gmailRefundNotices.take(3))
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
-                        '\${row['date'] ?? ''} · \${row['subject'] ?? ''}',
+                        '${row['date'] ?? ''} · ${row['subject'] ?? ''}',
                         style: const TextStyle(fontSize: 11),
                       ),
                     ),
@@ -121,7 +121,7 @@ s=s.replace(method,r'''
   Future<void> _propagateRefundGmailEvidenceToPurchase() async {
     if (purchaseId == null || gmailRefundNotices.isEmpty) return;
     final rows = await Store.list('purchases', forceRefresh: true);
-    final index = rows.indexWhere((e) => '\${e['id']}' == purchaseId);
+    final index = rows.indexWhere((e) => '${e['id']}' == purchaseId);
     if (index < 0) return;
     rows[index] = {
       ...rows[index],
@@ -181,12 +181,12 @@ s=s.replace(storage,storage+'''
       'gmailRefundedItemNames': gmailPurchaseRefundedItemNames,
 ''',1)
 # Item editing display: show flag directly beside its name in purchase list.
-title="              title: Text('\${e['name']}'),"
+title="              title: Text('${e['name']}'),"
 assert s.count(title)==1,'v83 purchase item title missing'
 s=s.replace(title,'''              title: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('\${e['name']}'),
+                  Text('${e['name']}'),
                   if (gmailItemMentionedInRefund(
                       e['name'], gmailPurchaseRefundedItemNames))
                     const Text(
@@ -206,7 +206,7 @@ s=s[:idx]+'''        if (gmailPurchaseRefundNotices.isNotEmpty)
             child: Text(
               gmailPurchaseRefundedItemNames.isEmpty
                   ? 'Aviso de reembolso en Gmail: artículo no identificado'
-                  : 'Reembolso en Gmail: \${gmailPurchaseRefundedItemNames.join(', ')}',
+                  : 'Reembolso en Gmail: ${gmailPurchaseRefundedItemNames.join(', ')}',
               style: const TextStyle(color: Colors.orangeAccent),
             ),
           ),
