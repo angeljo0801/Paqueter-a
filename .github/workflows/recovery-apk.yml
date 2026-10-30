@@ -72,7 +72,7 @@ jobs:
           from pathlib import Path
           src = Path('.github/build_paqueteria_canonical.py').read_text()
           version = Path('paqueteria/pubspec.yaml').read_text()
-          assert 'version: 2.6.88+122' in version
+          assert 'version: 2.6.89+123' in version
           assert 'shared_preferences_android: 2.4.28' in version, 'Android preferences ABI pin missing'
           for missing in [
               'patch_native_local_storage_v38.py',
@@ -131,6 +131,7 @@ jobs:
           assert 'patch_recovery_receivables_audit_v80.py' in src, 'Missing correct receivables and financial audit'
           assert 'patch_recovery_label_name_scanner_v81.py' in src, 'Missing camera OCR shipping-name scan'
           assert 'patch_recovery_analyze_all_gmail_candidates_v82.py' in src, 'Missing full Gmail inbox candidate analysis beyond first 80'
+          assert 'patch_recovery_gmail_refund_item_badges_v83.py' in src, 'Missing item-level refund notices in package and purchase editors'
           print('Validated Gmail photo baseline and purchase linking.')
           PY
 
@@ -241,8 +242,8 @@ jobs:
           # them as updates instead of reporting "App not installed / couldn't update".
           # Most recent recovery used versionCode 100265.
           # Use the next value, NOT a 200000 range that could block upgrades.
-          # Future production releases must use a versionCode greater than 100290.
-          BUILD_NUMBER=100290
+          # Future production releases must use a versionCode greater than 100291.
+          BUILD_NUMBER=100291
           echo "PAQUETERIA_BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
           flutter build apk --release --build-number "$BUILD_NUMBER"
 
