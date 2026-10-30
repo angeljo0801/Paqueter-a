@@ -95,6 +95,7 @@ PATCHES = [
     '.github/patch_recovery_receivables_audit_v80.py',
     '.github/patch_recovery_label_name_scanner_v81.py',
     '.github/patch_recovery_analyze_all_gmail_candidates_v82.py',
+    '.github/patch_recovery_gmail_refund_item_badges_v83.py',
 ]
 
 for patch in PATCHES:
@@ -351,6 +352,20 @@ CHECKS['app/lib/package_purchase_links.dart'] = [
     'class PackagePurchaseLinks', 'choosePurchases(', 'choosePackagesForPurchase(',
     "'purchaseIds'", "'purchaseId'",
 ]
+CHECKS['app/lib/packages.dart'].extend([
+    'gmailRefundNotices',
+    'gmailRefundedItemNames',
+    'Reembolso mencionado en Gmail',
+]);
+CHECKS['app/lib/purchases.dart'].extend([
+    'gmailPurchaseRefundNotices',
+    'gmailPurchaseRefundedItemNames',
+    'Reembolso mencionado en Gmail',
+]);
+CHECKS['app/lib/gmail_purchase_link.dart'].extend([
+    'gmailItemMentionedInRefund',
+]);
+
 CHECKS['app/lib/packages.dart'].extend([
     '...gmailCandidateInbox,',
     'scanPrintedNameOnPackage',
