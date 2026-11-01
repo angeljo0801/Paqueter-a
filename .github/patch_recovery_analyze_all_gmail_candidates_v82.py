@@ -111,8 +111,12 @@ alias = r'''    final acceptedAliases = <String>{...accepted};
     for (final image in gmailCandidateInbox) {
       final cached = (image['url'] ?? '').toString().trim();
       final original = (image['originalUrl'] ?? '').toString().trim();
-      if (accepted.contains(cached) && original.isNotEmpty) {
-        acceptedAliases.add(original);
+      // The same product may be accepted through either the cached URL
+      // or the original store URL. Resolve both ways to avoid showing a
+      // genuine accepted product again as an unreviewed/rejected photo.
+      if (accepted.contains(cached) || accepted.contains(original)) {
+        if (cached.isNotEmpty) acceptedAliases.add(cached);
+        if (original.isNotEmpty) acceptedAliases.add(original);
       }
     }
 '''
